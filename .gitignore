@@ -1,0 +1,4 @@
+# 로컬 환경 변수와 비밀값
+.env
+.env.*
+!.env.example
