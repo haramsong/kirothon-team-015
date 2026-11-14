@@ -173,7 +173,8 @@ class DynamoInventoryRepository:
             "resultVersion": record.result_version,
             "createdAt": record.created_at,
         }
-        serializer = TypeSerializer()
+        # boto3 resource의 meta.client는 파이썬 값을 자동으로 DynamoDB 타입으로 바꾼다.
+        # 직접 TypeSerializer로 바꾸면 두 번 직렬화되어 pk가 Map이 되고 트랜잭션이 취소된다.
 
         try:
             self._table.meta.client.transact_write_items(
@@ -181,20 +182,20 @@ class DynamoInventoryRepository:
                     {
                         "Put": {
                             "TableName": self._table.name,
-                            "Item": self._serialize_document(inventory_item, serializer),
+                            "Item": inventory_item,
                             "ConditionExpression": (
                                 "attribute_not_exists(pk) OR #version = :expected"
                             ),
                             "ExpressionAttributeNames": {"#version": "version"},
                             "ExpressionAttributeValues": {
-                                ":expected": serializer.serialize(expected_version)
+                                ":expected": expected_version
                             },
                         }
                     },
                     {
                         "Put": {
                             "TableName": self._table.name,
-                            "Item": self._serialize_document(deduction_item, serializer),
+                            "Item": deduction_item,
                             "ConditionExpression": "attribute_not_exists(pk)",
                         }
                     },

@@ -161,11 +161,11 @@ def test_repository_transacts_inventory_version_and_unique_deduction_record() ->
     assert inventory_put["ConditionExpression"] == (
         "attribute_not_exists(pk) OR #version = :expected"
     )
-    assert inventory_put["ExpressionAttributeValues"] == {":expected": {"N": "1"}}
-    assert inventory_put["Item"]["sk"] == {"S": "INVENTORY"}
+    assert inventory_put["ExpressionAttributeValues"] == {":expected": 1}
+    assert inventory_put["Item"]["sk"] == "INVENTORY"
     assert deduction_put["ConditionExpression"] == "attribute_not_exists(pk)"
-    assert deduction_put["Item"]["sk"] == {"S": f"DEDUCTION#{request_id}"}
-    assert deduction_put["Item"]["payloadHash"] == {"S": "abc123"}
+    assert deduction_put["Item"]["sk"] == f"DEDUCTION#{request_id}"
+    assert deduction_put["Item"]["payloadHash"] == "abc123"
 
 
 def test_repository_maps_canceled_deduction_transaction_without_success() -> None:
