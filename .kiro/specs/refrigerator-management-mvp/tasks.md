@@ -279,7 +279,7 @@
     - 로컬 Vite+uvicorn smoke와 전체 자동 테스트가 성공한 뒤에만 SAM 검증이 실행되게 순서를 고정하며 AWS 배포는 수행하지 않는다.
     - _Requirements: 12.5~12.8, 13.11_
 
-- [-] 10. Checkpoint - 핵심 경로와 전체 시간 예산을 확인한다.
+- [x] 10. Checkpoint - 핵심 경로와 전체 시간 예산을 확인한다.
   - Ensure all tests pass, ask the user if questions arise.
   - 핵심 경로 구현과 로컬 자동 검증을 먼저 완료하고, 누적 시간이 330분을 넘으면 8.2, 8.6, 8.7과 기타 선택 통합 테스트를 생략해 360분 상한을 지킨다.
 

@@ -1,0 +1,233 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 공통 배포 설정과 AWS·GitHub 대상 검사 스크립트를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191276
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635202379
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635350770
+      }
+    ],
+    "1.3 Git branch·remote·stage 범위 검사 스크립트를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191278
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635355134
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635532933
+      }
+    ],
+    "2.1 별도 OIDC Bootstrap CloudFormation 템플릿을 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191279
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635536949
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635706971
+      }
+    ],
+    "2.2 OIDC bootstrap script를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191281
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635710591
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635897633
+      }
+    ],
+    "3.1 GitHub Actions CI workflow와 runtime 고정 파일을 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191283
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635901287
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636068183
+      }
+    ],
+    "3.2 실행 가능한 로컬 CI 검증 스크립트를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191284
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636071743
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636197844
+      }
+    ],
+    "4. Checkpoint - CI와 OIDC 정적 검증을 완료한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191285
+      }
+    ],
+    "5.1 Application Stack 및 frontend 배포 스크립트를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191288
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636207142
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636399221
+      }
+    ],
+    "5.3 GitHub Actions CD workflow를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191289
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636402856
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636558559
+      }
+    ],
+    "6.1 승인된 AWS 계정에서 OIDC Bootstrap Stack을 실제 배포한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191290
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636563607
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794637848253
+      }
+    ],
+    "6.2 Application Stack과 frontend를 최초 실제 배포한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191291
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794637852467
+      }
+    ],
+    "7.1 GitHub variables 및 workflow dispatch 스크립트를 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191292
+      }
+    ],
+    "7.3 Repository variables를 실제 설정하고 workflow_dispatch를 검증한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191294
+      }
+    ],
+    "8.1 AWS 배포 운영·롤백 runbook을 작성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191295
+      }
+    ],
+    "9. Final checkpoint - 전체 자동 검증과 배포 기록을 확인한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635191297
+      }
+    ],
+    "1. 배포 대상 안전 경계를 구현한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635532936
+      }
+    ],
+    "2. OIDC 부트스트랩을 구현한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794635897636
+      }
+    ],
+    "3. CI를 구현한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636197847
+      }
+    ],
+    "5. CD 배포 로직을 구현한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794636558563
+      }
+    ]
+  }
+}

@@ -24,23 +24,8 @@ permissions:
       effect: deny
     - capability: mcp
       match:
-        - "figma/whoami"
-        - "figma/get_metadata"
-        - "figma/get_design_context"
-        - "figma/get_screenshot"
-        - "figma/download_assets"
-        - "figma/get_variable_defs"
+        - "figma/*"
       effect: allow
-    - capability: mcp
-      match: ["figma/*"]
-      exclude:
-        - "figma/whoami"
-        - "figma/get_metadata"
-        - "figma/get_design_context"
-        - "figma/get_screenshot"
-        - "figma/download_assets"
-        - "figma/get_variable_defs"
-      effect: ask
 ---
 
 # 역할
