@@ -75,3 +75,9 @@ export interface DeductionRequestDto {
   deductionRequestId: string
   items: DeductionItemInput[]
 }
+
+export interface DeductionResultDto {
+  inventory: InventoryDto
+  deductedCount: number
+  removedNames: string[]
+}

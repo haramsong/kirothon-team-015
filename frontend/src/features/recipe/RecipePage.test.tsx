@@ -7,7 +7,11 @@ import { ApiError } from '../../api/client'
 import type { InventoryDto, MealRecommendationDto, RecipeDto } from '../../models/types'
 import { RecipePage } from './RecipePage'
 
-const { postMock } = vi.hoisted(() => ({ postMock: vi.fn() }))
+const { postMock, replaceInventoryMock, showToastMock } = vi.hoisted(() => ({
+  postMock: vi.fn(),
+  replaceInventoryMock: vi.fn(),
+  showToastMock: vi.fn(),
+}))
 
 vi.mock('../device/DeviceProvider', () => ({
   useDevice: () => ({ apiClient: { post: postMock }, deviceId: 'test-device' }),
@@ -39,9 +43,14 @@ vi.mock('../inventory/InventoryProvider', () => ({
   useInventory: () => ({
     inventory: currentInventory,
     lastSuccessfulInventory: currentInventory,
+    replaceInventory: replaceInventoryMock,
     status: 'success',
     today: '2026-04-07',
   }),
+}))
+
+vi.mock('../toast/ToastProvider', () => ({
+  useToast: () => ({ showToast: showToastMock }),
 }))
 
 const recommendation: MealRecommendationDto = {
@@ -79,6 +88,9 @@ function renderPage() {
 describe('RecipePage', () => {
   beforeEach(() => {
     postMock.mockReset()
+    replaceInventoryMock.mockReset()
+    showToastMock.mockReset()
+    vi.stubGlobal('crypto', { randomUUID: () => '323e4567-e89b-42d3-a456-426614174000' })
   })
 
   it('임박 재료를 표시하고 추천 응답 뒤 조리 순서를 별도로 요청한다', async () => {
@@ -159,6 +171,46 @@ describe('RecipePage', () => {
     expect(postMock).toHaveBeenNthCalledWith(4, '/api/recommendations', {
       clientDate: '2026-04-07',
       excludedMenuName: '양파 달걀 덮밥',
+    })
+  })
+
+  it('차감 성공 시 최신 재고를 반영하고 차감 수와 제거 품목을 알린다', async () => {
+    const user = userEvent.setup()
+    const updatedInventory: InventoryDto = {
+      version: 4,
+      items: [
+        { ...currentInventory.items[0], quantity: 7 },
+        { ...currentInventory.items[1], quantity: 3.5 },
+      ],
+    }
+    postMock
+      .mockResolvedValueOnce(recommendation)
+      .mockResolvedValueOnce(recipe)
+      .mockResolvedValueOnce({
+        inventory: updatedInventory,
+        deductedCount: 2,
+        removedNames: ['대파'],
+      })
+
+    renderPage()
+    await screen.findByText('달걀과 함께 볶아요.')
+
+    await user.click(screen.getByRole('button', { name: '요리했어요' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('양파 8개 → 7개')
+    expect(screen.getByRole('dialog')).toHaveTextContent('달걀 4개 → 3.5개')
+
+    await user.click(screen.getByRole('button', { name: '재고에서 차감하기' }))
+
+    await waitFor(() => expect(replaceInventoryMock).toHaveBeenCalledWith(updatedInventory))
+    expect(showToastMock).toHaveBeenCalledWith(
+      '2개 재료를 차감했어요. 냉장고에서 제거: 대파',
+    )
+    expect(postMock).toHaveBeenNthCalledWith(3, '/api/deductions?today=2026-04-07', {
+      deductionRequestId: '323e4567-e89b-42d3-a456-426614174000',
+      items: [
+        { itemId: 'onion', quantity: 1 },
+        { itemId: 'egg', quantity: 0.5 },
+      ],
     })
   })
 })

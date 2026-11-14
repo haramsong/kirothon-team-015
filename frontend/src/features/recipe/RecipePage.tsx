@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../api/client'
 import { getExpirationDisplay, sortInventoryItems } from '../../logic/date'
 import type { MealRecommendationDto, RecipeDto } from '../../models/types'
+import { DeductionModal } from '../deduction/DeductionModal'
 import { useDevice } from '../device/DeviceProvider'
 import { useInventory } from '../inventory/InventoryProvider'
+import { useToast } from '../toast/ToastProvider'
 
 type RequestStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -14,10 +16,19 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function RecipePage() {
+  const navigate = useNavigate()
   const { apiClient } = useDevice()
-  const { inventory, lastSuccessfulInventory, status: inventoryStatus, today } = useInventory()
+  const {
+    inventory,
+    lastSuccessfulInventory,
+    replaceInventory,
+    status: inventoryStatus,
+    today,
+  } = useInventory()
+  const { showToast } = useToast()
   const displayedInventory = inventory ?? lastSuccessfulInventory
   const [recommendation, setRecommendation] = useState<MealRecommendationDto | null>(null)
+  const [isDeductionOpen, setIsDeductionOpen] = useState(false)
   const [recommendationStatus, setRecommendationStatus] = useState<RequestStatus>('idle')
   const [recommendationError, setRecommendationError] = useState<string | null>(null)
   const [recipe, setRecipe] = useState<RecipeDto | null>(null)
@@ -254,6 +265,7 @@ export function RecipePage() {
 
             <button
               className="mt-6 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+              onClick={() => setIsDeductionOpen(true)}
               type="button"
             >
               요리했어요
@@ -261,6 +273,25 @@ export function RecipePage() {
           </article>
         )}
       </section>
+
+      {isDeductionOpen && recommendation && displayedInventory && (
+        <DeductionModal
+          inventory={displayedInventory}
+          onCancel={() => setIsDeductionOpen(false)}
+          onSuccess={(result) => {
+            replaceInventory(result.inventory)
+            const removedMessage =
+              result.removedNames.length > 0
+                ? ` 냉장고에서 제거: ${result.removedNames.join(', ')}`
+                : ''
+            showToast(`${result.deductedCount}개 재료를 차감했어요.${removedMessage}`)
+            setIsDeductionOpen(false)
+            navigate('/')
+          }}
+          recommendation={recommendation}
+          today={today}
+        />
+      )}
     </main>
   )
 }
