@@ -2,7 +2,7 @@
 
 혼자 사는 직장인과 대학생이 장 본 재료를 잊고 버리는 불편을, 영수증·주문내역 캡처 한 장으로 등록하고 "요리했어요" 한 번으로 쓴 재료가 빠지는 냉장고 재고 관리로 줄입니다.
 
-**Demo:** (제출 전 추가: 배포 주소 또는 데모 영상 링크)
+**Demo:** https://d2pkazqqygwla0.cloudfront.net
 
 ---
 
@@ -47,7 +47,7 @@
 
 | 기능 | 해결하는 불편 | 코드 위치 |
 | --- | --- | --- |
-| 장보기 인식: 영수증 사진과 온라인 주문내역 캡처를 같은 버튼 하나로 올리면 Bedrock(Claude Haiku 4.5)이 품목명, 수량(개), 보관 위치, 예상 소비기한을 추출합니다. 비식품과 기본 양념 8종은 뺍니다 | 등록이 번거롭다, 온라인 장보기에는 영수증이 없다 | `frontend/src/features/registration/`, `backend/app/services/recognition.py`, `backend/app/gateways/bedrock.py` |
+| 장보기 인식: 영수증 사진과 온라인 주문내역 캡처를 같은 버튼 하나로 올리면(한 번에 최대 5장, 한 장씩 차례로 인식해 하나의 목록으로 합침) Bedrock(Claude Haiku 4.5)이 품목명, 수량(개), 보관 위치, 예상 소비기한을 추출합니다. 비식품과 기본 양념 8종은 뺍니다 | 등록이 번거롭다, 온라인 장보기에는 영수증이 없다 | `frontend/src/features/registration/`, `backend/app/services/recognition.py`, `backend/app/gateways/bedrock.py` |
 | 이미지 전처리: 브라우저에서 EXIF 방향을 반영하고 긴 변 1568px 이하 JPEG로 줄입니다 | 휴대폰 사진이 Lambda·Bedrock 크기 제한을 넘는다 | `frontend/src/features/registration/imageProcessor.ts` |
 | 등록 확인: 인식 결과를 수정, 삭제, 추가한 뒤 저장합니다. 이미 있는 같은 이름의 품목은 합칩니다 | LLM 추정값이 틀릴 수 있다 | `frontend/src/features/inventory/ItemModal.tsx`, `backend/app/logic/inventory.py`, `backend/app/routes/inventory.py` |
 | 냉장고 목록: 남은 일수(D-day) 순으로 정렬하고 D-3 이내 재료를 강조합니다. 품목과 수량은 언제든 고칠 수 있습니다 | 무엇이 곧 상하는지 모른다 | `frontend/src/features/inventory/InventoryPage.tsx`, `frontend/src/logic/date.ts` |
@@ -58,7 +58,7 @@
 
 ## 3. 사용 시나리오
 
-1. 마트 영수증 사진을 올립니다. 인식된 품목(예: 양파 8개, 예상 소비기한 D-5)을 확인하고 틀린 수량을 고친 뒤 저장합니다.
+1. 마트 영수증 사진을 올립니다. 여러 장이면 한 번에 최대 5장까지 고를 수 있습니다. 인식된 품목(예: 양파 8개, 예상 소비기한 D-5)을 확인하고 틀린 수량을 고친 뒤 저장합니다.
 2. 쿠팡 주문내역 캡처를 같은 버튼으로 올립니다. 같은 방식으로 확인하고 저장하면 이미 있는 품목은 수량이 합쳐집니다.
 3. 냉장고 목록에서 D-3 이내 재료가 강조된 것을 확인하고 "한 끼 추천"을 누릅니다.
 4. 추천 메뉴의 사용 재료와 조리 단계를 보고 요리합니다. "요리했어요"를 누르면 "양파 8개 → 7개"처럼 바뀌는 수량이 보이고, 필요하면 사용량을 고친 뒤 차감합니다. 냉장고 목록에 바뀐 수량이 바로 반영됩니다.
@@ -145,8 +145,8 @@ aws cloudfront create-invalidation --distribution-id <DistributionId> --paths '/
 | 단계 | 결과 |
 | --- | --- |
 | 핵심 데모 종단 간 테스트 (영수증 업로드 → 수정 → 저장 → 추천 → 레시피 → 차감 → 목록 반영) | 통과 |
-| 백엔드 테스트 (pytest) | 77개 + 식단 11개 |
-| 프론트엔드 테스트 (Vitest) | 44개 + 식단 4개 |
+| 백엔드 테스트 (pytest) | 81개 + 식단 11개 |
+| 프론트엔드 테스트 (Vitest) | 48개 + 식단 4개 |
 | TypeScript 검사, Vite 프로덕션 빌드 | 통과 |
 
 테스트는 실제 AWS를 호출하지 않습니다. DynamoDB와 Bedrock은 메모리 어댑터와 시나리오별 고정 응답으로 대체합니다.
