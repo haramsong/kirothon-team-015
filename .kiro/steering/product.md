@@ -7,7 +7,8 @@ inclusion: always
 ## 서비스명
 
 - 서비스명: **나만의 냉장고** (확정)
-- 영문 표기와 저장소 이름: `my-own-fridge` (GitHub 저장소 이름에 한글을 쓸 수 없어서 영문으로 둔다)
+- GitHub 저장소: `haramsong/kirothon-team-015` (KIROTHON 2026 제출 규칙의 `kirothon-팀번호` 형식. 팀 015, 팀명 깜자조와)
+- 영문 표기와 AWS 리소스 이름 접두사: `my-own-fridge` (스택, 역할, 버킷, 테이블 이름. 저장소 이름이 바뀌어도 유지한다)
 - 화면, 발표 자료, 문서에는 "나만의 냉장고"를 쓴다.
 
 ## 한 줄 소개

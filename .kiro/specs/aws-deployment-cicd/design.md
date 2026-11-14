@@ -2,7 +2,7 @@
 
 ## Overview
 
-`aws-deployment-cicd`는 `haramsong/my-own-fridge`의 검증과 AWS 배포를 GitHub Actions로 자동화합니다. 로컬 운영자는 `default` 프로파일로 계정 `462747820533`과 `ap-northeast-2`를 확인한 뒤 별도 CloudFormation 부트스트랩 스택을 생성합니다. GitHub Actions는 부트스트랩 스택의 IAM 역할을 OIDC로 수임하므로 장기 AWS 액세스 키를 저장하지 않습니다.
+`aws-deployment-cicd`는 `haramsong/kirothon-team-015`의 검증과 AWS 배포를 GitHub Actions로 자동화합니다. 로컬 운영자는 `default` 프로파일로 계정 `462747820533`과 `ap-northeast-2`를 확인한 뒤 별도 CloudFormation 부트스트랩 스택을 생성합니다. GitHub Actions는 부트스트랩 스택의 IAM 역할을 OIDC로 수임하므로 장기 AWS 액세스 키를 저장하지 않습니다.
 
 기존 `template.yaml`과 애플리케이션 구조는 유지합니다. 새 구성은 다음 경계로 나눕니다.
 
@@ -15,16 +15,16 @@
 
 승인된 고정값은 다음과 같습니다.
 
-| 항목 | 값 |
-| --- | --- |
-| AWS account | `462747820533` |
-| AWS region | `ap-northeast-2` |
-| Local profile | `default` |
-| GitHub repository | `haramsong/my-own-fridge` |
-| Deployment branch/ref | `main` / `refs/heads/main` |
-| Bootstrap stack | `my-own-fridge-github-oidc` |
-| Application stack | `my-own-fridge` |
-| OIDC subject | `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main` |
+| 항목                  | 값                                                                         |
+| --------------------- | -------------------------------------------------------------------------- |
+| AWS account           | `462747820533`                                                             |
+| AWS region            | `ap-northeast-2`                                                           |
+| Local profile         | `default`                                                                  |
+| GitHub repository     | `haramsong/kirothon-team-015`                                              |
+| Deployment branch/ref | `main` / `refs/heads/main`                                                 |
+| Bootstrap stack       | `my-own-fridge-github-oidc`                                                |
+| Application stack     | `my-own-fridge`                                                            |
+| OIDC subject          | `repo:haramsong@61612250/kirothon-team-015@1457328764:ref:refs/heads/main` |
 
 GitHub workflow의 AWS 명령은 OIDC action이 제공한 단기 환경 자격 증명을 사용합니다. `default` 프로파일은 로컬 STS, CloudFormation, SAM 명령에만 강제합니다. GitHub runner에 장기 키나 자격 증명 파일을 만들지 않습니다.
 
@@ -66,7 +66,7 @@ flowchart LR
 3. CloudFormation 경계: 배포 역할 trust policy는 audience와 subject 모두 `StringEquals`를 사용합니다. wildcard를 쓰지 않습니다.
 4. 산출물 경계: 정적 파일 대상은 CD 입력이 아니라 Application Stack output에서만 얻습니다.
 5. 순서 경계: 각 배포 단계는 선행 단계 성공 후 실행됩니다. output 하나라도 비면 프론트엔드 build 전 중단합니다.
-6. Git 경계: 작업 자동화는 `main`, `origin=https://github.com/haramsong/my-own-fridge.git` 또는 동등한 SSH URL만 허용하고 task별 파일만 stage합니다.
+6. Git 경계: 작업 자동화는 `main`, `origin=https://github.com/haramsong/kirothon-team-015.git` 또는 동등한 SSH URL만 허용하고 task별 파일만 stage합니다.
 
 ## Components and Interfaces
 
@@ -78,7 +78,7 @@ flowchart LR
 readonly EXPECTED_AWS_ACCOUNT='462747820533'
 readonly AWS_REGION='ap-northeast-2'
 readonly AWS_PROFILE='default'
-readonly GITHUB_REPOSITORY='haramsong/my-own-fridge'
+readonly GITHUB_REPOSITORY='haramsong/kirothon-team-015'
 readonly DEPLOY_BRANCH='main'
 readonly BOOTSTRAP_STACK_NAME='my-own-fridge-github-oidc'
 readonly SAM_STACK_NAME='my-own-fridge'
@@ -93,7 +93,7 @@ readonly SAM_STACK_NAME='my-own-fridge'
 #### Parameters와 Conditions
 
 - `GitHubOwner`: default와 allowed value `haramsong`
-- `GitHubRepository`: default와 allowed value `my-own-fridge`
+- `GitHubRepository`: default와 allowed value `kirothon-team-015`
 - `GitHubBranch`: default와 allowed value `main`
 - `ApplicationStackName`: default와 allowed value `my-own-fridge`
 - `ExistingGitHubOidcProviderArn`: 기본 빈 문자열
@@ -116,19 +116,19 @@ Trust policy 핵심은 다음과 같습니다.
 Condition:
   StringEquals:
     token.actions.githubusercontent.com:aud: sts.amazonaws.com
-    token.actions.githubusercontent.com:sub: repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main
+    token.actions.githubusercontent.com:sub: repo:haramsong@61612250/kirothon-team-015@1457328764:ref:refs/heads/main
 ```
 
 배포 역할의 session duration은 1시간입니다. policy는 다음 범주로 분리하고 `Resource: "*"`가 불가피한 action을 test allowlist에 명시합니다.
 
-| Sid | 용도 | 범위 |
-| --- | --- | --- |
-| `ApplicationStackManagement` | change set 및 stack 배포/조회 | `my-own-fridge` stack ARN |
-| `SamTransformInspection` | transform/template 검증 | AWS API가 resource scope를 지원하지 않는 읽기 action만 `*` |
-| `ArtifactBucketAccess` | SAM package upload | bootstrap artifact bucket과 objects |
+| Sid                               | 용도                                                                | 범위                                                        |
+| --------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `ApplicationStackManagement`      | change set 및 stack 배포/조회                                       | `my-own-fridge` stack ARN                                   |
+| `SamTransformInspection`          | transform/template 검증                                             | AWS API가 resource scope를 지원하지 않는 읽기 action만 `*`  |
+| `ArtifactBucketAccess`            | SAM package upload                                                  | bootstrap artifact bucket과 objects                         |
 | `ApplicationResourceProvisioning` | Lambda, DynamoDB, API Gateway, S3, CloudFront 리소스의 CF 생성/수정 | stack-name prefix 또는 서비스가 지원하는 최소 resource 범위 |
-| `ApplicationRoleManagement` | SAM 생성 Lambda role 관리와 pass role | `arn:aws:iam::462747820533:role/my-own-fridge-*` |
-| `StaticSiteDeployment` | stack output 버킷 sync와 distribution invalidation | `my-own-fridge-*` S3 ARN, CloudFront distribution resource |
+| `ApplicationRoleManagement`       | SAM 생성 Lambda role 관리와 pass role                               | `arn:aws:iam::462747820533:role/my-own-fridge-*`            |
+| `StaticSiteDeployment`            | stack output 버킷 sync와 distribution invalidation                  | `my-own-fridge-*` S3 ARN, CloudFront distribution resource  |
 
 CloudFormation이 생성 전 물리 ID를 알 수 없어 resource-level 제한을 지원하지 않는 일부 `cloudfront`, `apigateway`, `iam:GetRole`, `s3:ListAllMyBuckets` read/create action은 `Resource: "*"`가 필요할 수 있습니다. 허용 action을 개별 열거하며 AWS 관리형 `AdministratorAccess`, `PowerUserAccess`는 사용하지 않습니다. 실제 첫 OIDC dispatch에서 AccessDenied가 발생하면 필요한 action 하나를 근거와 함께 추가하고 별도 commit으로 검토합니다.
 
@@ -150,7 +150,7 @@ assert_local_aws_target()
 
 assert_git_target()
   input: git branch, origin URL
-  success: main and haramsong/my-own-fridge
+  success: main and haramsong/kirothon-team-015
   failure: stderr + non-zero
 
 assert_github_target(repository, ref, account, region)
@@ -226,12 +226,12 @@ concurrency:
 
 Repository variables:
 
-| Name | Value source |
-| --- | --- |
-| `AWS_ROLE_ARN` | Bootstrap output `GitHubDeploymentRoleArn` |
-| `AWS_REGION` | `ap-northeast-2` |
-| `SAM_STACK_NAME` | `my-own-fridge` |
-| `SAM_ARTIFACT_BUCKET` | Bootstrap output `SamArtifactBucketName` |
+| Name                  | Value source                               |
+| --------------------- | ------------------------------------------ |
+| `AWS_ROLE_ARN`        | Bootstrap output `GitHubDeploymentRoleArn` |
+| `AWS_REGION`          | `ap-northeast-2`                           |
+| `SAM_STACK_NAME`      | `my-own-fridge`                            |
+| `SAM_ARTIFACT_BUCKET` | Bootstrap output `SamArtifactBucketName`   |
 
 CD는 하나의 `deploy` job에서 검증과 배포를 직렬 실행해 검증한 checkout SHA와 배포 SHA가 같도록 합니다.
 
@@ -286,11 +286,11 @@ CD 명령 규칙:
 `scripts/deployment/configure-github.sh`는 `gh auth status`, repository/branch, bootstrap outputs를 확인한 뒤 다음을 수행합니다.
 
 ```text
-gh variable set AWS_ROLE_ARN --repo haramsong/my-own-fridge --body <role arn>
-gh variable set AWS_REGION --repo haramsong/my-own-fridge --body ap-northeast-2
-gh variable set SAM_STACK_NAME --repo haramsong/my-own-fridge --body my-own-fridge
-gh variable set SAM_ARTIFACT_BUCKET --repo haramsong/my-own-fridge --body <bucket>
-gh variable list --repo haramsong/my-own-fridge --json name,value
+gh variable set AWS_ROLE_ARN --repo haramsong/kirothon-team-015 --body <role arn>
+gh variable set AWS_REGION --repo haramsong/kirothon-team-015 --body ap-northeast-2
+gh variable set SAM_STACK_NAME --repo haramsong/kirothon-team-015 --body my-own-fridge
+gh variable set SAM_ARTIFACT_BUCKET --repo haramsong/kirothon-team-015 --body <bucket>
+gh variable list --repo haramsong/kirothon-team-015 --json name,value
 ```
 
 Role ARN과 bucket은 비밀이 아니지만 출력 시 account와 resource format만 검증합니다. AWS access key 관련 이름은 설정 함수 allowlist에 없습니다. `gh`가 없거나 인증이 실패하면 스크립트는 변수를 일부 설정하기 전에 실패하고 동일한 수동 명령 템플릿을 출력합니다.
@@ -298,7 +298,7 @@ Role ARN과 bucket은 비밀이 아니지만 출력 시 account와 resource form
 `scripts/deployment/dispatch-cd.sh [git-sha]`:
 
 1. 현재 `origin/main` SHA 또는 명시한 검증 revision 확인
-2. `gh workflow run cd.yml --repo haramsong/my-own-fridge --ref main`
+2. `gh workflow run cd.yml --repo haramsong/kirothon-team-015 --ref main`
 3. 생성된 run ID 확인
 4. `gh run watch <id> --exit-status`
 5. `gh run view <id> --json conclusion,headSha,url`
@@ -314,7 +314,7 @@ GitHub `workflow_dispatch`는 임의 과거 SHA를 직접 선택하지 못하므
 - `.kiro/specs/refrigerator-management-mvp/tasks.meta.json`
 - `.kiro/agents/designer.json`
 
-commit 전 `scripts/deployment/assert-git-target.sh`가 branch와 remote를 확인합니다. remote URL은 HTTPS와 SSH 정규형을 `haramsong/my-own-fridge`로 normalize한 뒤 비교합니다. push는 `git push origin main`만 허용합니다. commit hook 실패 시 수정하고 새 commit을 만들며 amend 또는 `--no-verify`를 사용하지 않습니다.
+commit 전 `scripts/deployment/assert-git-target.sh`가 branch와 remote를 확인합니다. remote URL은 HTTPS와 SSH 정규형을 `haramsong/kirothon-team-015`로 normalize한 뒤 비교합니다. push는 `git push origin main`만 허용합니다. commit hook 실패 시 수정하고 새 commit을 만들며 amend 또는 `--no-verify`를 사용하지 않습니다.
 
 ## Data Models
 
@@ -334,9 +334,9 @@ commit 전 `scripts/deployment/assert-git-target.sh`가 branch와 remote를 확�
 
 ```ts
 interface ApplicationOutputs {
-  ApiUrl: string
-  StaticBucketName: string
-  DistributionId: string
+  ApiUrl: string;
+  StaticBucketName: string;
+  DistributionId: string;
 }
 ```
 
@@ -346,12 +346,12 @@ interface ApplicationOutputs {
 
 ```ts
 interface DeploymentContext {
-  accountId: '462747820533'
-  region: 'ap-northeast-2'
-  repository: 'haramsong/my-own-fridge'
-  ref: 'refs/heads/main'
-  stackName: 'my-own-fridge'
-  commitSha: string
+  accountId: "462747820533";
+  region: "ap-northeast-2";
+  repository: "haramsong/kirothon-team-015";
+  ref: "refs/heads/main";
+  stackName: "my-own-fridge";
+  commitSha: string;
 }
 ```
 
@@ -359,57 +359,57 @@ workflow와 shell script는 같은 필드 집합을 검증합니다. 검증 함�
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 ### Property 1: 승인 대상만 변경 허용
 
-*For all* AWS account, region, repository, ref 조합에 대해, Deployment_Automation은 네 값이 각각 `462747820533`, `ap-northeast-2`, `haramsong/my-own-fridge`, `refs/heads/main`과 정확히 일치할 때만 AWS 변경 계획을 허용하며 하나라도 다르면 변경 command runner를 호출하지 않습니다.
+_For all_ AWS account, region, repository, ref 조합에 대해, Deployment_Automation은 네 값이 각각 `462747820533`, `ap-northeast-2`, `haramsong/kirothon-team-015`, `refs/heads/main`과 정확히 일치할 때만 AWS 변경 계획을 허용하며 하나라도 다르면 변경 command runner를 호출하지 않습니다.
 
 **Validates: Requirements 1.2, 1.3, 1.5, 1.6, 1.7, 5.4**
 
 ### Property 2: 배포 단계의 선행 성공과 fail-fast
 
-*For any* bootstrap 또는 application deployment 단계와 주입된 최초 실패 위치에 대해, 실행 trace는 정의된 순서를 유지하고 실패한 단계 뒤의 CloudFormation, SAM, S3, CloudFront 또는 GitHub 변경 단계를 포함하지 않습니다.
+_For any_ bootstrap 또는 application deployment 단계와 주입된 최초 실패 위치에 대해, 실행 trace는 정의된 순서를 유지하고 실패한 단계 뒤의 CloudFormation, SAM, S3, CloudFront 또는 GitHub 변경 단계를 포함하지 않습니다.
 
 **Validates: Requirements 2.8, 2.9, 4.13, 5.1, 5.3**
 
 ### Property 3: 필수 stack output 완전성
 
-*For all* CloudFormation output key-value 집합에 대해, output parser는 ApiUrl, StaticBucketName, DistributionId가 모두 존재하고 각 값이 비어 있지 않을 때만 프론트엔드 배포 context를 생성합니다.
+_For all_ CloudFormation output key-value 집합에 대해, output parser는 ApiUrl, StaticBucketName, DistributionId가 모두 존재하고 각 값이 비어 있지 않을 때만 프론트엔드 배포 context를 생성합니다.
 
 **Validates: Requirements 4.8, 4.9**
 
 ### Property 4: 로컬 운영 명령의 대상 명시
 
-*For all* 운영 문서와 로컬 배포 스크립트에서 추출한 AWS CLI 및 SAM 변경 명령에 대해, 각 명령은 `--profile default`와 `--region ap-northeast-2`를 포함합니다.
+_For all_ 운영 문서와 로컬 배포 스크립트에서 추출한 AWS CLI 및 SAM 변경 명령에 대해, 각 명령은 `--profile default`와 `--region ap-northeast-2`를 포함합니다.
 
 **Validates: Requirements 5.2, 6.6**
 
 ### Property 5: Git 변경 범위 제한
 
-*For all* branch, origin URL, 변경 경로 집합과 task 허용 경로 집합에 대해, Git 자동화는 branch와 normalized origin이 승인된 값일 때만 허용 경로의 교집합을 stage 대상으로 만들고, 승인 대상이 다르면 commit과 push runner를 호출하지 않습니다.
+_For all_ branch, origin URL, 변경 경로 집합과 task 허용 경로 집합에 대해, Git 자동화는 branch와 normalized origin이 승인된 값일 때만 허용 경로의 교집합을 stage 대상으로 만들고, 승인 대상이 다르면 commit과 push runner를 호출하지 않습니다.
 
 **Validates: Requirements 7.2, 7.3, 7.5**
 
 ## Error Handling
 
-| 실패 | 감지 위치 | 동작 | 후속 변경 |
-| --- | --- | --- | --- |
-| STS account 불일치 | local/CD target guard | expected/actual account 표시, non-zero | 없음 |
-| region 불일치 | local/CD target guard | expected/actual region 표시, non-zero | 없음 |
-| repository/ref 불일치 | git/GitHub guard | approved target 표시, non-zero | 없음 |
-| OIDC provider 중복 | bootstrap discovery | provider ARN 목록 표시, non-zero | 없음 |
-| bootstrap template 오류 | CloudFormation validate | validation 오류 전달 | deploy 없음 |
-| bootstrap deploy 실패 | CloudFormation deploy/waiter | stack event 조회 명령 안내 | application deploy 없음 |
-| OIDC 수임 실패 | configure credentials | workflow 실패 | AWS 변경 없음 |
-| CI 검증 실패 | CI/CD validation | 실패 command 종료 코드 유지 | deploy 없음 |
-| SAM deploy 실패 | SAM/CloudFormation | workflow 실패, stack event URL/명령 표시 | frontend deploy 없음 |
-| stack output 누락 | output parser | 누락 key 표시 | build/sync/invalidation 없음 |
-| frontend build 실패 | npm | workflow 실패 | S3/CloudFront 변경 없음 |
-| S3 sync 실패 | AWS CLI | workflow 실패 | invalidation 없음 |
-| invalidation 실패 | AWS CLI | workflow 실패, 재시도 명령 안내 | stack/S3 자동 롤백 없음 |
-| gh 누락/미인증 | GitHub config script | 수동 명령 표시, non-zero | GitHub 설정 없음 |
-| commit/push 실패 | task execution | 오류 유지, 다음 task 중단 | force/amend 없음 |
+| 실패                    | 감지 위치                    | 동작                                     | 후속 변경                    |
+| ----------------------- | ---------------------------- | ---------------------------------------- | ---------------------------- |
+| STS account 불일치      | local/CD target guard        | expected/actual account 표시, non-zero   | 없음                         |
+| region 불일치           | local/CD target guard        | expected/actual region 표시, non-zero    | 없음                         |
+| repository/ref 불일치   | git/GitHub guard             | approved target 표시, non-zero           | 없음                         |
+| OIDC provider 중복      | bootstrap discovery          | provider ARN 목록 표시, non-zero         | 없음                         |
+| bootstrap template 오류 | CloudFormation validate      | validation 오류 전달                     | deploy 없음                  |
+| bootstrap deploy 실패   | CloudFormation deploy/waiter | stack event 조회 명령 안내               | application deploy 없음      |
+| OIDC 수임 실패          | configure credentials        | workflow 실패                            | AWS 변경 없음                |
+| CI 검증 실패            | CI/CD validation             | 실패 command 종료 코드 유지              | deploy 없음                  |
+| SAM deploy 실패         | SAM/CloudFormation           | workflow 실패, stack event URL/명령 표시 | frontend deploy 없음         |
+| stack output 누락       | output parser                | 누락 key 표시                            | build/sync/invalidation 없음 |
+| frontend build 실패     | npm                          | workflow 실패                            | S3/CloudFront 변경 없음      |
+| S3 sync 실패            | AWS CLI                      | workflow 실패                            | invalidation 없음            |
+| invalidation 실패       | AWS CLI                      | workflow 실패, 재시도 명령 안내          | stack/S3 자동 롤백 없음      |
+| gh 누락/미인증          | GitHub config script         | 수동 명령 표시, non-zero                 | GitHub 설정 없음             |
+| commit/push 실패        | task execution               | 오류 유지, 다음 task 중단                | force/amend 없음             |
 
 `first-deploy.sh`는 일부 성공 상태를 자동 삭제하지 않습니다. 예를 들어 SAM 성공 후 frontend build가 실패하면 Application Stack은 유지하며, 입력을 수정한 뒤 frontend 단계 또는 전체 idempotent 배포를 다시 실행합니다. CloudFormation과 S3의 자동 파괴적 롤백은 만들지 않습니다.
 

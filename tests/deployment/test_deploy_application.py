@@ -24,7 +24,7 @@ def write_fake_commands(tmp_path: Path) -> tuple[Path, Path]:
         "printf 'git %s\\n' \"$*\" >> \"${CALLS_FILE}\"\n"
         "case \"$*\" in\n"
         "  'branch --show-current') printf '%s\\n' \"${FAKE_BRANCH:-main}\" ;;\n"
-        "  'remote get-url origin') printf '%s\\n' \"${FAKE_REMOTE:-https://github.com/haramsong/my-own-fridge.git}\" ;;\n"
+        "  'remote get-url origin') printf '%s\\n' \"${FAKE_REMOTE:-https://github.com/haramsong/kirothon-team-015.git}\" ;;\n"
         "  *) exit 64 ;;\n"
         "esac\n",
         encoding="utf-8",

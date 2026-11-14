@@ -37,7 +37,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          [[ "${CURRENT_REPOSITORY}" == 'haramsong/my-own-fridge' ]] || {
+          [[ "${CURRENT_REPOSITORY}" == 'haramsong/kirothon-team-015' ]] || {
             printf '승인되지 않은 GitHub 저장소입니다: %s\n' "${CURRENT_REPOSITORY}" >&2
             exit 1
           }
@@ -95,7 +95,7 @@ jobs:
       - name: Python 3.13 설정
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
           cache: pip
           cache-dependency-path: |
             backend/requirements.txt

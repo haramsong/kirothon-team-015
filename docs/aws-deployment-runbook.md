@@ -2,22 +2,22 @@
 
 ## 1. 목적과 승인 대상
 
-이 문서는 `haramsong/my-own-fridge`의 GitHub OpenID Connect(OIDC) 부트스트랩, 최초 배포, 일상 배포, 검증, 장애 진단 및 롤백 절차를 설명합니다. 애플리케이션은 AWS SAM으로 배포하고, 프론트엔드는 Application Stack output이 가리키는 S3와 CloudFront에 배포합니다.
+이 문서는 `haramsong/kirothon-team-015`의 GitHub OpenID Connect(OIDC) 부트스트랩, 최초 배포, 일상 배포, 검증, 장애 진단 및 롤백 절차를 설명합니다. 애플리케이션은 AWS SAM으로 배포하고, 프론트엔드는 Application Stack output이 가리키는 S3와 CloudFront에 배포합니다.
 
 승인된 대상은 다음 값으로 고정합니다.
 
-| 항목 | 승인값 |
-| --- | --- |
-| AWS 계정 | `462747820533` |
-| AWS 리전 | `ap-northeast-2` |
-| 로컬 AWS CLI 프로파일 | `default` |
-| GitHub 저장소 | `haramsong/my-own-fridge` |
-| 배포 브랜치·ref | `main` · `refs/heads/main` |
-| Bootstrap Stack | `my-own-fridge-github-oidc` |
-| Application Stack | `my-own-fridge` |
-| GitHub 배포 역할 | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
-| OIDC audience | `sts.amazonaws.com` |
-| OIDC immutable subject | `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main` |
+| 항목                   | 승인값                                                                     |
+| ---------------------- | -------------------------------------------------------------------------- |
+| AWS 계정               | `462747820533`                                                             |
+| AWS 리전               | `ap-northeast-2`                                                           |
+| 로컬 AWS CLI 프로파일  | `default`                                                                  |
+| GitHub 저장소          | `haramsong/kirothon-team-015`                                              |
+| 배포 브랜치·ref        | `main` · `refs/heads/main`                                                 |
+| Bootstrap Stack        | `my-own-fridge-github-oidc`                                                |
+| Application Stack      | `my-own-fridge`                                                            |
+| GitHub 배포 역할       | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy`               |
+| OIDC audience          | `sts.amazonaws.com`                                                        |
+| OIDC immutable subject | `repo:haramsong@61612250/kirothon-team-015@1457328764:ref:refs/heads/main` |
 
 계정, 리전, 저장소 또는 브랜치 중 하나라도 승인값과 다르면 즉시 중단합니다. 불일치를 임시로 우회하거나 스크립트의 고정값을 바꿔서 배포하지 않습니다.
 
@@ -51,7 +51,7 @@ git branch --show-current
 git remote get-url origin
 ```
 
-결과가 각각 계정 `462747820533`, 리전 `ap-northeast-2`, 브랜치 `main`, 저장소 `haramsong/my-own-fridge`와 일치해야 합니다. Git remote는 스크립트가 동등한 HTTPS·SSH 형식을 정규화해 검사합니다. 하나라도 다르면 Bootstrap, SAM deploy, S3 sync, CloudFront invalidation, commit 및 push를 실행하지 않습니다.
+결과가 각각 계정 `462747820533`, 리전 `ap-northeast-2`, 브랜치 `main`, 저장소 `haramsong/kirothon-team-015`와 일치해야 합니다. Git remote는 스크립트가 동등한 HTTPS·SSH 형식을 정규화해 검사합니다. 하나라도 다르면 Bootstrap, SAM deploy, S3 sync, CloudFront invalidation, commit 및 push를 실행하지 않습니다.
 
 로컬 검증은 AWS 리소스를 변경하지 않습니다.
 
@@ -153,16 +153,16 @@ Bootstrap output을 확인한 뒤 다음 스크립트로 네 변수를 설정하
 ./scripts/deployment/configure-github.sh
 
 gh variable list \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --json name,value
 ```
 
-| 변수 | 값 |
-| --- | --- |
-| `AWS_ROLE_ARN` | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
-| `AWS_REGION` | `ap-northeast-2` |
-| `SAM_STACK_NAME` | `my-own-fridge` |
-| `SAM_ARTIFACT_BUCKET` | Bootstrap Stack의 `SamArtifactBucketName` output |
+| 변수                  | 값                                                           |
+| --------------------- | ------------------------------------------------------------ |
+| `AWS_ROLE_ARN`        | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
+| `AWS_REGION`          | `ap-northeast-2`                                             |
+| `SAM_STACK_NAME`      | `my-own-fridge`                                              |
+| `SAM_ARTIFACT_BUCKET` | Bootstrap Stack의 `SamArtifactBucketName` output             |
 
 `gh`가 없거나 `github.com` 인증이 없으면 스크립트는 GitHub 설정을 변경하지 않고 동일한 수동 `gh variable set` 명령을 표시합니다. 표시된 값은 Bootstrap output과 승인된 고정값을 다시 대조한 후 실행합니다. AWS key나 token은 Repository Variables 또는 Secrets에 추가하지 않습니다.
 
@@ -172,7 +172,7 @@ gh variable list \
 
 `main` push는 CI와 CD workflow를 시작합니다. CD는 다음 안전 경계를 적용합니다.
 
-- 저장소 `haramsong/my-own-fridge`와 ref `refs/heads/main` 정확 일치
+- 저장소 `haramsong/kirothon-team-015`와 ref `refs/heads/main` 정확 일치
 - Repository Variables의 존재와 승인값 확인
 - OIDC 역할 수임 후 STS 계정 `462747820533`과 리전 `ap-northeast-2` 재확인
 - 백엔드·프론트엔드 테스트, TypeScript 검사, production build, SAM 검증·build 성공 후에만 배포
@@ -184,12 +184,12 @@ gh variable list \
 ```bash
 gh run list \
   --workflow cd.yml \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --branch main \
   --limit 10
 
 gh run view <RUN_ID> \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --json conclusion,headSha,event,status,url
 ```
 
@@ -208,15 +208,15 @@ EXPECTED_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
 
 ```bash
 gh workflow run cd.yml \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --ref main
 
 gh run watch <RUN_ID> \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --exit-status
 
 gh run view <RUN_ID> \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --json conclusion,headSha,url
 ```
 
@@ -313,11 +313,11 @@ aws cloudfront list-invalidations \
 
 ```bash
 gh run view <RUN_ID> \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --log-failed
 
 gh run view <RUN_ID> \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --json conclusion,headSha,event,status,url
 ```
 
@@ -371,13 +371,13 @@ GOOD_SHA='<검증된-40자리-Git-SHA>'
 
 gh run list \
   --workflow cd.yml \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --branch main \
   --commit "${GOOD_SHA}" \
   --limit 10
 
 gh run view <GOOD_RUN_ID> \
-  --repo haramsong/my-own-fridge \
+  --repo haramsong/kirothon-team-015 \
   --json conclusion,headSha,url
 ```
 
@@ -473,19 +473,19 @@ aws cloudformation describe-stacks \
 
 2026-11-14에 다음 비밀이 아닌 결과를 실제 배포와 `workflow_dispatch`에서 확인했습니다.
 
-| 항목 | 확인값 |
-| --- | --- |
-| 성공한 CD run | `43568447277` |
-| 배포 revision | `67b467dc99a14db2b2109a901bb17d792b3d6b79` |
-| Application Stack | `my-own-fridge`, `CREATE_COMPLETE` |
-| ApiUrl | `https://wt6ej9b4a7.execute-api.ap-northeast-2.amazonaws.com` |
-| API health | `/api/health`의 `status=ok` |
-| StaticBucketName | `my-own-fridge-staticbucket-zfaosmep1kz8` |
-| DistributionId | `E1I42HBY0SR8ZO` |
-| CloudFront URL | `https://d2pkazqqygwla0.cloudfront.net` |
-| 확인한 invalidation | `I7S5Y7G3BHIJJMCJW3AHCKKG4X`, `Completed` |
-| GitHub deployment role | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
-| SAM artifact bucket | `my-own-fridge-github-oidc-samartifactbucket-vctylgw6itbg` |
-| OIDC provider | `arn:aws:iam::462747820533:oidc-provider/token.actions.githubusercontent.com` |
+| 항목                   | 확인값                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| 성공한 CD run          | `43568447277`                                                                 |
+| 배포 revision          | `67b467dc99a14db2b2109a901bb17d792b3d6b79`                                    |
+| Application Stack      | `my-own-fridge`, `CREATE_COMPLETE`                                            |
+| ApiUrl                 | `https://wt6ej9b4a7.execute-api.ap-northeast-2.amazonaws.com`                 |
+| API health             | `/api/health`의 `status=ok`                                                   |
+| StaticBucketName       | `my-own-fridge-staticbucket-zfaosmep1kz8`                                     |
+| DistributionId         | `E1I42HBY0SR8ZO`                                                              |
+| CloudFront URL         | `https://d2pkazqqygwla0.cloudfront.net`                                       |
+| 확인한 invalidation    | `I7S5Y7G3BHIJJMCJW3AHCKKG4X`, `Completed`                                     |
+| GitHub deployment role | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy`                  |
+| SAM artifact bucket    | `my-own-fridge-github-oidc-samartifactbucket-vctylgw6itbg`                    |
+| OIDC provider          | `arn:aws:iam::462747820533:oidc-provider/token.actions.githubusercontent.com` |
 
 이 기준선은 장애 시 비교용이며 고정된 배포 대상 자체를 바꾸지 않습니다. AWS credential, OIDC token, 기기 ID 및 재고 데이터는 기록하지 않습니다.

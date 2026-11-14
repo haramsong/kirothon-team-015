@@ -108,6 +108,16 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794635191285
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794639874993
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794640184967
       }
     ],
     "5.1 Application Stack 및 frontend 배포 스크립트를 작성한다": [
@@ -171,6 +181,11 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794637852467
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794638499803
       }
     ],
     "7.1 GitHub variables 및 workflow dispatch 스크립트를 작성한다": [
@@ -178,6 +193,16 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794635191292
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794638503674
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794638736256
       }
     ],
     "7.3 Repository variables를 실제 설정하고 workflow_dispatch를 검증한다": [
@@ -185,6 +210,16 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794635191294
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794638740601
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794639548738
       }
     ],
     "8.1 AWS 배포 운영·롤백 runbook을 작성한다": [
@@ -192,6 +227,16 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794635191295
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794639552491
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794639870622
       }
     ],
     "9. Final checkpoint - 전체 자동 검증과 배포 기록을 확인한다": [
@@ -199,6 +244,16 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794635191297
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794640189190
+      },
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794640480736
       }
     ],
     "1. 배포 대상 안전 경계를 구현한다": [
@@ -227,6 +282,27 @@
         "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
         "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
         "timestamp": 1794636558563
+      }
+    ],
+    "6. 최초 실제 AWS 배포를 수행하고 기록한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794638499806
+      }
+    ],
+    "7. GitHub repository 설정과 수동 CD 검증을 구현한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794639548741
+      }
+    ],
+    "8. 운영·롤백 문서와 문서 검증을 완성한다": [
+      {
+        "executionId": "a1ff2c92-871b-4a51-b6b4-eaef4ee21ce9",
+        "chatSessionId": "sess_2f35d6c4-1246-4e47-930d-9b67735bb890",
+        "timestamp": 1794639870625
       }
     ]
   }

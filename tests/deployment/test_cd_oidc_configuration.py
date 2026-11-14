@@ -7,9 +7,9 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 BOOTSTRAP_TEMPLATE = ROOT_DIR / "infra" / "github-oidc-bootstrap.yaml"
 CD_WORKFLOW = ROOT_DIR / ".github" / "workflows" / "cd.yml"
 IMMUTABLE_SUBJECT = (
-    "repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main"
+    "repo:haramsong@61612250/kirothon-team-015@1457328764:ref:refs/heads/main"
 )
-LEGACY_SUBJECT = "repo:haramsong/my-own-fridge:ref:refs/heads/main"
+LEGACY_SUBJECT = "repo:haramsong/kirothon-team-015:ref:refs/heads/main"
 
 
 def test_bootstrap_trust_uses_repository_immutable_subject() -> None:

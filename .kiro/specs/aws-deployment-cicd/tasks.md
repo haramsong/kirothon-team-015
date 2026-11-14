@@ -2,7 +2,7 @@
 
 ## Overview
 
-GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repository variables, `workflow_dispatch`, 운영·롤백 문서까지 점진적으로 구현합니다. 각 leaf task는 선행 검증을 통과한 뒤 해당 task 파일만 독립 commit으로 만들고 `origin/main`에 push합니다. 계정 `462747820533`, 리전 `ap-northeast-2`, 저장소 `haramsong/my-own-fridge`, branch `main` 중 하나라도 다르면 AWS 변경과 Git commit/push를 중단합니다.
+GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repository variables, `workflow_dispatch`, 운영·롤백 문서까지 점진적으로 구현합니다. 각 leaf task는 선행 검증을 통과한 뒤 해당 task 파일만 독립 commit으로 만들고 `origin/main`에 push합니다. 계정 `462747820533`, 리전 `ap-northeast-2`, 저장소 `haramsong/kirothon-team-015`, branch `main` 중 하나라도 다르면 AWS 변경과 Git commit/push를 중단합니다.
 
 ## Tasks
 
@@ -19,7 +19,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - **Validates: Requirements 1.2, 1.3, 1.5, 1.6, 1.7, 5.4**
 
   - [x] 1.3 Git branch·remote·stage 범위 검사 스크립트를 작성한다
-    - HTTPS와 SSH remote를 `haramsong/my-own-fridge`로 정규화하고 현재 branch가 `main`인지 검사한다.
+    - HTTPS와 SSH remote를 `haramsong/kirothon-team-015`로 정규화하고 현재 branch가 `main`인지 검사한다.
     - task별 허용 경로만 stage할 수 있는 allowlist interface를 제공하고 force push 및 hook 우회 flag를 거부한다.
     - 기존 작업 트리의 MVP 스펙 및 designer agent 변경을 stage 대상에서 제외한다.
     - _Requirements: 1.8, 7.2, 7.3, 7.5, 7.7_
@@ -32,7 +32,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
 - [x] 2. OIDC 부트스트랩을 구현한다
   - [x] 2.1 별도 OIDC Bootstrap CloudFormation 템플릿을 작성한다
     - `infra/github-oidc-bootstrap.yaml`에 조건부 GitHub OIDC provider, repository·branch 제한 deployment role, 암호화된 SAM artifact bucket을 정의한다.
-    - trust policy의 audience와 subject를 각각 `sts.amazonaws.com`, `repo:haramsong/my-own-fridge:ref:refs/heads/main`으로 정확히 제한한다.
+    - trust policy의 audience와 subject를 각각 `sts.amazonaws.com`, `repo:haramsong/kirothon-team-015:ref:refs/heads/main`으로 정확히 제한한다.
     - 관리자 관리형 policy 없이 Application Stack, SAM artifact, 정적 S3, CloudFront 배포에 필요한 action을 개별 열거한다.
     - role ARN, artifact bucket, provider ARN output을 정의하고 장기 AWS key는 포함하지 않는다.
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.12_
@@ -131,7 +131,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12_
 
   - [x] 7.3 Repository variables를 실제 설정하고 workflow_dispatch를 검증한다
-    - 가능하면 `gh variable set/list`, `gh workflow run`, `gh run watch/view`를 사용해 `haramsong/my-own-fridge`의 네 변수를 설정하고 CD를 `main`에서 실행한다.
+    - 가능하면 `gh variable set/list`, `gh workflow run`, `gh run watch/view`를 사용해 `haramsong/kirothon-team-015`의 네 변수를 설정하고 CD를 `main`에서 실행한다.
     - run conclusion이 success이고 head SHA가 dispatch 직전 `origin/main` SHA와 같은지 확인한다.
     - 실제 stack outputs, ApiUrl build, S3 sync와 invalidation 완료를 확인하고 non-secret 결과를 validation 문서에 추가한다.
     - `gh`를 사용할 수 없으면 저장소를 변경하지 않고 수동 명령과 미완료 상태를 기록한다.
@@ -155,14 +155,14 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - workflow, template, scripts, docs에서 장기 AWS access key 값과 금지 credential file write pattern을 검사한다.
     - _Requirements: 2.12, 4.16, 5.8, 6.1, 6.2, 6.3, 6.4, 6.5, 6.7, 6.8_
 
-- [-] 9. Final checkpoint - 전체 자동 검증과 배포 기록을 확인한다
+- [x] 9. Final checkpoint - 전체 자동 검증과 배포 기록을 확인한다
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
 
 - `*`가 붙은 테스트 sub-task는 빠른 MVP 진행 시 선택적으로 건너뛸 수 있습니다.
 - Property test는 각 속성당 최소 100회 실행하고 `Feature: aws-deployment-cicd, Property N: ...` annotation을 포함합니다.
-- 모든 non-checkpoint leaf task는 시작 전에 `main`과 `origin=haramsong/my-own-fridge`를 확인합니다. 완료 후 task 관련 파일만 stage하여 Independent_Commit을 만들고 `git push origin main`을 수행합니다.
+- 모든 non-checkpoint leaf task는 시작 전에 `main`과 `origin=haramsong/kirothon-team-015`를 확인합니다. 완료 후 task 관련 파일만 stage하여 Independent_Commit을 만들고 `git push origin main`을 수행합니다.
 - 기존 작업 트리의 `.kiro/specs/refrigerator-management-mvp/tasks.md`, `.kiro/specs/refrigerator-management-mvp/tasks.meta.json`, `.kiro/agents/designer.json`은 이 계획의 commit에 포함하지 않습니다.
 - commit 또는 push가 실패하면 다음 task로 진행하지 않습니다. `--amend`, `--no-verify`, force push는 사용하지 않습니다.
 - 실제 AWS/GitHub 변경 task는 승인된 계정, 리전, 저장소, branch가 모두 일치할 때만 실행하며 stack, bucket, role 또는 provider 삭제를 수행하지 않습니다.

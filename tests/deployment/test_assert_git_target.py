@@ -42,7 +42,7 @@ def init_repository(tmp_path: Path, *, branch: str = "main") -> Path:
     repo.mkdir()
     result = git(repo, "init", "-b", branch)
     assert result.returncode == 0, result.stderr
-    result = git(repo, "remote", "add", "origin", "https://github.com/haramsong/my-own-fridge.git")
+    result = git(repo, "remote", "add", "origin", "https://github.com/haramsong/kirothon-team-015.git")
     assert result.returncode == 0, result.stderr
     return repo
 
@@ -50,25 +50,25 @@ def init_repository(tmp_path: Path, *, branch: str = "main") -> Path:
 @pytest.mark.parametrize(
     "remote_url",
     [
-        "https://github.com/haramsong/my-own-fridge.git",
-        "https://github.com/haramsong/my-own-fridge",
-        "git@github.com:haramsong/my-own-fridge.git",
-        "ssh://git@github.com/haramsong/my-own-fridge.git",
+        "https://github.com/haramsong/kirothon-team-015.git",
+        "https://github.com/haramsong/kirothon-team-015",
+        "git@github.com:haramsong/kirothon-team-015.git",
+        "ssh://git@github.com/haramsong/kirothon-team-015.git",
     ],
 )
 def test_normalize_github_remote_accepts_approved_https_and_ssh(remote_url: str) -> None:
     result = run_bash(source_assert_script(f"normalize_github_remote {shlex.quote(remote_url)}"))
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "haramsong/my-own-fridge\n"
+    assert result.stdout == "haramsong/kirothon-team-015\n"
 
 
 @pytest.mark.parametrize(
     "remote_url",
     [
-        "https://github.example.com/haramsong/my-own-fridge.git",
-        "https://github.com/haramsong/my-own-fridge/other",
-        "git@github.com:someone/my-own-fridge.git",
+        "https://github.example.com/haramsong/kirothon-team-015.git",
+        "https://github.com/haramsong/kirothon-team-015/other",
+        "git@github.com:someone/kirothon-team-015.git",
     ],
 )
 def test_git_target_rejects_unapproved_or_ambiguous_remote(remote_url: str) -> None:

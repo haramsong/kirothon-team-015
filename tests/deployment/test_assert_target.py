@@ -34,7 +34,7 @@ def test_approved_constants_and_targets_match_exactly() -> None:
     result = run_bash(
         source_assert_script(
             "assert_github_target "
-            "'haramsong/my-own-fridge' 'refs/heads/main' "
+            "'haramsong/kirothon-team-015' 'refs/heads/main' "
             "'462747820533' 'ap-northeast-2'; "
             "printf '%s|%s|%s|%s|%s|%s' "
             '"${AWS_PROFILE}" "${AWS_REGION}" "${GITHUB_REPOSITORY}" '
@@ -44,7 +44,7 @@ def test_approved_constants_and_targets_match_exactly() -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
-        "default|ap-northeast-2|haramsong/my-own-fridge|main|"
+        "default|ap-northeast-2|haramsong/kirothon-team-015|main|"
         "my-own-fridge-github-oidc|my-own-fridge"
     )
 
@@ -52,10 +52,10 @@ def test_approved_constants_and_targets_match_exactly() -> None:
 @pytest.mark.parametrize(
     ("repository", "ref", "account", "region"),
     [
-        ("other/my-own-fridge", "refs/heads/main", "462747820533", "ap-northeast-2"),
-        ("haramsong/my-own-fridge", "refs/heads/dev", "462747820533", "ap-northeast-2"),
-        ("haramsong/my-own-fridge", "refs/heads/main", "000000000000", "ap-northeast-2"),
-        ("haramsong/my-own-fridge", "refs/heads/main", "462747820533", "us-east-1"),
+        ("other/kirothon-team-015", "refs/heads/main", "462747820533", "ap-northeast-2"),
+        ("haramsong/kirothon-team-015", "refs/heads/dev", "462747820533", "ap-northeast-2"),
+        ("haramsong/kirothon-team-015", "refs/heads/main", "000000000000", "ap-northeast-2"),
+        ("haramsong/kirothon-team-015", "refs/heads/main", "462747820533", "us-east-1"),
     ],
 )
 def test_github_mismatch_blocks_change_runner(

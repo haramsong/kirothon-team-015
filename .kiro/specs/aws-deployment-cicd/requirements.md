@@ -2,14 +2,14 @@
 
 ## Introduction
 
-이 문서는 GitHub 저장소 `haramsong/my-own-fridge`의 `main` 브랜치에 대해 GitHub Actions 기반 지속적 통합(Continuous Integration, CI)과 지속적 배포(Continuous Deployment, CD)를 구축하는 요구사항을 정의합니다. CD는 장기 AWS 액세스 키 대신 GitHub OpenID Connect(OIDC)로 AWS 계정 `462747820533`의 배포 역할을 수임하고, `ap-northeast-2`에 AWS SAM 애플리케이션과 React 정적 사이트를 배포합니다.
+이 문서는 GitHub 저장소 `haramsong/kirothon-team-015`의 `main` 브랜치에 대해 GitHub Actions 기반 지속적 통합(Continuous Integration, CI)과 지속적 배포(Continuous Deployment, CD)를 구축하는 요구사항을 정의합니다. CD는 장기 AWS 액세스 키 대신 GitHub OpenID Connect(OIDC)로 AWS 계정 `462747820533`의 배포 역할을 수임하고, `ap-northeast-2`에 AWS SAM 애플리케이션과 React 정적 사이트를 배포합니다.
 
 로컬 부트스트랩과 최초 배포는 AWS CLI `default` 프로파일을 사용합니다. 배포 자동화는 현재 `template.yaml`의 서버리스 구조를 유지하며, 기존 `refrigerator-management-mvp` 스펙은 변경하지 않습니다. 실제 배포는 계정, 리전, 저장소 또는 브랜치가 승인된 값과 다르면 변경 전에 중단해야 합니다.
 
 ## Glossary
 
 - **Deployment_Automation**: 이 문서가 정의하는 OIDC 부트스트랩, CI, CD, 검증 및 운영 절차 전체
-- **Source_Repository**: GitHub 저장소 `haramsong/my-own-fridge`
+- **Source_Repository**: GitHub 저장소 `haramsong/kirothon-team-015`
 - **Deployment_Branch**: Source_Repository의 `main` 브랜치
 - **Expected_AWS_Account**: AWS 계정 ID `462747820533`
 - **Deployment_Region**: AWS 리전 `ap-northeast-2`
@@ -61,7 +61,7 @@
 2. THE Bootstrap_Template SHALL GitHub_OIDC_Provider의 URL을 `https://token.actions.githubusercontent.com`으로, client ID를 `sts.amazonaws.com`으로 정의한다.
 3. THE GitHub_Deployment_Role SHALL `sts:AssumeRoleWithWebIdentity` 신뢰 주체를 GitHub_OIDC_Provider로 제한한다.
 4. THE GitHub_Deployment_Role SHALL OIDC audience 조건을 `sts.amazonaws.com`과 정확히 일치시킨다.
-5. THE GitHub_Deployment_Role SHALL OIDC subject 조건을 GitHub가 Source_Repository에 부여한 immutable owner·repository ID와 Deployment_Branch를 포함하는 `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main`과 정확히 일치시킨다.
+5. THE GitHub_Deployment_Role SHALL OIDC subject 조건을 GitHub가 Source_Repository에 부여한 immutable owner·repository ID와 Deployment_Branch를 포함하는 `repo:haramsong@61612250/kirothon-team-015@1457328764:ref:refs/heads/main`과 정확히 일치시킨다.
 6. THE GitHub_Deployment_Role SHALL Application_Stack 배포, Lambda 아티팩트 업로드, 프론트엔드 업로드 및 CloudFront 무효화에 필요한 작업으로 권한을 제한한다.
 7. THE Bootstrap_Template SHALL GitHub_Deployment_Role의 Role_ARN과 SAM 패키지 전용 버킷의 ArtifactBucketName을 stack output으로 제공한다.
 8. WHEN Bootstrap_Script가 실행되면, THE Bootstrap_Script SHALL Deployment_Identity_Check를 통과한 뒤 Bootstrap_Template 검증과 Bootstrap_Stack 배포를 순서대로 수행한다.

@@ -28,7 +28,7 @@ def write_fake_commands(tmp_path: Path, *, include_gh: bool = True) -> tuple[Pat
         "case \"$*\" in\n"
         "  'branch --show-current') printf '%s\\n' \"${FAKE_BRANCH:-main}\" ;;\n"
         "  'remote get-url origin') printf '%s\\n' "
-        "\"${FAKE_REMOTE:-https://github.com/haramsong/my-own-fridge.git}\" ;;\n"
+        "\"${FAKE_REMOTE:-https://github.com/haramsong/kirothon-team-015.git}\" ;;\n"
         "  'ls-remote --exit-code origin refs/heads/main') "
         "printf '%s\\trefs/heads/main\\n' \"${FAKE_MAIN_SHA:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}\" ;;\n"
         "  *) exit 64 ;;\n"
@@ -67,7 +67,7 @@ def write_fake_commands(tmp_path: Path, *, include_gh: bool = True) -> tuple[Pat
             "printf 'gh %s\\n' \"$*\" >> \"${CALLS_FILE}\"\n"
             "case \"$1 $2\" in\n"
             "  'auth status') [[ \"${FAKE_GH_AUTH_FAIL:-0}\" == 0 ]] ;;\n"
-            "  'repo view') printf '%s\\n' \"${FAKE_GH_REPOSITORY:-haramsong/my-own-fridge}\" ;;\n"
+            "  'repo view') printf '%s\\n' \"${FAKE_GH_REPOSITORY:-haramsong/kirothon-team-015}\" ;;\n"
             "  'variable set')\n"
             "    [[ \"${FAKE_VARIABLE_SET_FAIL_NAME:-}\" != \"$3\" ]]\n"
             "    ;;\n"
@@ -96,7 +96,7 @@ def write_fake_commands(tmp_path: Path, *, include_gh: bool = True) -> tuple[Pat
             "    printf '%s\\t%s\\t%s\\n' "
             "\"${FAKE_CONCLUSION:-success}\" "
             "\"${FAKE_HEAD_SHA:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}\" "
-            "'https://github.com/haramsong/my-own-fridge/actions/runs/101'\n"
+            "'https://github.com/haramsong/kirothon-team-015/actions/runs/101'\n"
             "    ;;\n"
             "  *) exit 64 ;;\n"
             "esac\n",
@@ -152,7 +152,7 @@ def test_configure_sets_only_allowlisted_variables_and_verifies_values(tmp_path:
         "SAM_STACK_NAME",
         "SAM_ARTIFACT_BUCKET",
     ]
-    assert all("--repo haramsong/my-own-fridge" in call for call in variable_set_calls)
+    assert all("--repo haramsong/kirothon-team-015" in call for call in variable_set_calls)
     assert all(
         forbidden not in "\n".join(calls)
         for forbidden in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
@@ -245,7 +245,7 @@ def test_dispatch_runs_cd_for_main_and_verifies_new_run_sha(tmp_path: Path) -> N
 
     assert result.returncode == 0, result.stderr
     assert (
-        "gh workflow run cd.yml --repo haramsong/my-own-fridge --ref main" in calls
+        "gh workflow run cd.yml --repo haramsong/kirothon-team-015 --ref main" in calls
     )
     assert any(
         call.startswith("gh run list")
@@ -255,8 +255,8 @@ def test_dispatch_runs_cd_for_main_and_verifies_new_run_sha(tmp_path: Path) -> N
         and f"--commit {MAIN_SHA}" in call
         for call in calls
     )
-    assert "gh run watch 101 --repo haramsong/my-own-fridge --exit-status" in calls
-    assert "gh run view 101 --repo haramsong/my-own-fridge" in "\n".join(calls)
+    assert "gh run watch 101 --repo haramsong/kirothon-team-015 --exit-status" in calls
+    assert "gh run view 101 --repo haramsong/kirothon-team-015" in "\n".join(calls)
     assert f"head_sha={MAIN_SHA}" in result.stdout
 
 
@@ -276,7 +276,7 @@ def test_dispatch_unauthenticated_gh_prints_manual_commands_without_dispatch(tmp
     )
 
     assert result.returncode != 0
-    assert "gh workflow run cd.yml --repo haramsong/my-own-fridge --ref main" in result.stderr
+    assert "gh workflow run cd.yml --repo haramsong/kirothon-team-015 --ref main" in result.stderr
     assert f"--commit {MAIN_SHA}" in result.stderr
     assert not any(call.startswith("gh workflow run") for call in calls)
 
