@@ -40,7 +40,8 @@ export class ApiClient {
   constructor(
     private readonly baseUrl: string,
     private readonly deviceId: string,
-    private readonly transport: FetchTransport = fetch,
+    // 브라우저 fetch는 this가 window가 아니면 "Illegal invocation"으로 실패하므로 globalThis로 호출한다.
+    private readonly transport: FetchTransport = (input, init) => globalThis.fetch(input, init),
   ) {}
 
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {

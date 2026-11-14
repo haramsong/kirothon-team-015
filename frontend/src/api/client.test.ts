@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiClient, ApiError } from './client'
 
@@ -38,6 +38,36 @@ describe('ApiClient', () => {
       code: 'LLM_TIMEOUT',
       retryable: true,
       requestId: 'request-2',
+    })
+  })
+
+  describe('기본 transport', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('브라우저 fetch를 window(globalThis)에 묶어서 호출한다', async () => {
+      // 실제 브라우저의 fetch는 this가 window가 아니면 "Illegal invocation"으로 실패한다.
+      const browserLikeFetch = vi.fn(function (this: unknown) {
+        if (this !== undefined && this !== globalThis) {
+          throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation")
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ data: { status: 'ok' }, requestId: 'request-3' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      })
+      vi.stubGlobal('fetch', browserLikeFetch)
+
+      const client = new ApiClient('https://api.example.com', DEVICE_ID)
+
+      await expect(client.get<{ status: string }>('/api/health')).resolves.toEqual({ status: 'ok' })
+      expect(browserLikeFetch).toHaveBeenCalledWith(
+        'https://api.example.com/api/health',
+        expect.objectContaining({ headers: expect.any(Headers) }),
+      )
     })
   })
 
