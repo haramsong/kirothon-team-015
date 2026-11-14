@@ -1,0 +1,265 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 나만의 냉장고 GitHub Actions OIDC 배포 부트스트랩
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: haramsong
+    AllowedValues:
+      - haramsong
+  GitHubRepository:
+    Type: String
+    Default: my-own-fridge
+    AllowedValues:
+      - my-own-fridge
+  GitHubBranch:
+    Type: String
+    Default: main
+    AllowedValues:
+      - main
+  ApplicationStackName:
+    Type: String
+    Default: my-own-fridge
+    AllowedValues:
+      - my-own-fridge
+  ExistingGitHubOidcProviderArn:
+    Type: String
+    Default: ''
+    AllowedPattern: '^$|^arn:aws:iam::462747820533:oidc-provider/token\.actions\.githubusercontent\.com$'
+    ConstraintDescription: 승인 계정의 GitHub Actions OIDC 공급자 ARN 또는 빈 문자열이어야 합니다.
+
+Conditions:
+  CreateGitHubOidcProvider: !Equals [!Ref ExistingGitHubOidcProviderArn, '']
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationStackName
+        - Key: GitHubRepository
+          Value: !Sub '${GitHubOwner}/${GitHubRepository}'
+        - Key: GitHubBranch
+          Value: !Ref GitHubBranch
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  SamArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationStackName
+        - Key: Purpose
+          Value: sam-deployment-artifacts
+
+  GitHubDeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: my-own-fridge-github-deploy
+      Description: GitHub Actions OIDC를 사용하는 나만의 냉장고 배포 역할
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowApprovedGitHubBranch
+            Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateGitHubOidcProvider
+                - !Ref GitHubOidcProvider
+                - !Ref ExistingGitHubOidcProviderArn
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: repo:haramsong/my-own-fridge:ref:refs/heads/main
+      Policies:
+        - PolicyName: my-own-fridge-github-deployment
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ApplicationStackManagement
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStacks
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ApplicationStackName}/*'
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:changeSet/*/*'
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31'
+              - Sid: CloudFormationReadForDeployment
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ListStackResources
+                  - cloudformation:ValidateTemplate
+                Resource: '*'
+              - Sid: ArtifactBucketList
+                Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                Resource: !GetAtt SamArtifactBucket.Arn
+              - Sid: ArtifactObjectAccess
+                Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:ListMultipartUploadParts
+                  - s3:PutObject
+                Resource: !Sub '${SamArtifactBucket.Arn}/*'
+              - Sid: ApplicationRoleManagement
+                Effect: Allow
+                Action:
+                  - iam:AttachRolePolicy
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRolePolicies
+                  - iam:PassRole
+                  - iam:PutRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:UpdateRoleDescription
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${ApplicationStackName}-*'
+              - Sid: LambdaProvisioning
+                Effect: Allow
+                Action:
+                  - lambda:AddPermission
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:ListTags
+                  - lambda:RemovePermission
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationStackName}-*'
+              - Sid: DynamoDbProvisioning
+                Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:DeleteTable
+                  - dynamodb:DescribeContinuousBackups
+                  - dynamodb:DescribeTable
+                  - dynamodb:DescribeTimeToLive
+                  - dynamodb:TagResource
+                  - dynamodb:UntagResource
+                  - dynamodb:UpdateContinuousBackups
+                  - dynamodb:UpdateTable
+                  - dynamodb:UpdateTimeToLive
+                Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ApplicationStackName}-*'
+              - Sid: ApiGatewayProvisioning
+                Effect: Allow
+                Action:
+                  - apigateway:DELETE
+                  - apigateway:GET
+                  - apigateway:PATCH
+                  - apigateway:POST
+                  - apigateway:PUT
+                Resource: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}::/apis*'
+              - Sid: ApplicationBucketProvisioning
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:DeleteBucketPolicy
+                  - s3:GetBucketLocation
+                  - s3:GetBucketOwnershipControls
+                  - s3:GetBucketPolicy
+                  - s3:GetBucketPublicAccessBlock
+                  - s3:GetBucketTagging
+                  - s3:GetBucketVersioning
+                  - s3:GetEncryptionConfiguration
+                  - s3:ListBucket
+                  - s3:PutBucketOwnershipControls
+                  - s3:PutBucketPolicy
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:PutBucketTagging
+                  - s3:PutBucketVersioning
+                  - s3:PutEncryptionConfiguration
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${ApplicationStackName}-*'
+              - Sid: ApplicationBucketObjectDeployment
+                Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:ListMultipartUploadParts
+                  - s3:PutObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${ApplicationStackName}-*/*'
+              - Sid: CloudFrontProvisioning
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateDistribution
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:CreateOriginAccessControl
+                  - cloudfront:DeleteDistribution
+                  - cloudfront:DeleteOriginAccessControl
+                  - cloudfront:GetDistribution
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:GetInvalidation
+                  - cloudfront:GetOriginAccessControl
+                  - cloudfront:GetOriginAccessControlConfig
+                  - cloudfront:ListDistributions
+                  - cloudfront:ListOriginAccessControls
+                  - cloudfront:ListTagsForResource
+                  - cloudfront:TagResource
+                  - cloudfront:UntagResource
+                  - cloudfront:UpdateDistribution
+                  - cloudfront:UpdateOriginAccessControl
+                Resource: '*'
+
+Outputs:
+  GitHubDeploymentRoleArn:
+    Description: GitHub Actions가 OIDC로 수임할 배포 역할 ARN
+    Value: !GetAtt GitHubDeploymentRole.Arn
+  SamArtifactBucketName:
+    Description: SAM 패키지 전용 S3 버킷 이름
+    Value: !Ref SamArtifactBucket
+  OidcProviderArn:
+    Description: 생성하거나 재사용한 GitHub Actions OIDC 공급자 ARN
+    Value: !If
+      - CreateGitHubOidcProvider
+      - !Ref GitHubOidcProvider
+      - !Ref ExistingGitHubOidcProviderArn
