@@ -197,4 +197,96 @@ describe('RegistrationPage', () => {
 
     await waitFor(() => expect(postMock).toHaveBeenCalledTimes(3))
   })
+
+  it('여러 장을 한 번에 골라 차례로 인식하고 결과를 하나의 목록으로 합쳐 저장한다', async () => {
+    const user = userEvent.setup()
+    const secondItem = {
+      ...recognition.items[0],
+      id: '323e4567-e89b-42d3-a456-426614174000',
+      name: '우유',
+      quantity: 1,
+      storageLocation: '냉장' as const,
+    }
+    postMock
+      .mockResolvedValueOnce(recognition)
+      .mockResolvedValueOnce({ ...recognition, items: [secondItem] })
+      .mockResolvedValueOnce({
+        inventory: { items: [...recognition.items, secondItem], version: 1 },
+        savedCount: 2,
+      })
+    renderPage()
+
+    await user.upload(screen.getByLabelText('영수증 사진 또는 주문내역 캡처 올리기'), [
+      new File(['image-1'], 'receipt.png', { type: 'image/png' }),
+      new File(['image-2'], 'order.png', { type: 'image/png' }),
+    ])
+
+    expect(await screen.findByText('우유')).toBeInTheDocument()
+    expect(screen.getByText('양파')).toBeInTheDocument()
+    expect(processImageMock).toHaveBeenCalledTimes(2)
+    expect(screen.getByAltText('선택한 장보기 이미지 1')).toBeInTheDocument()
+    expect(screen.getByAltText('선택한 장보기 이미지 2')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '냉장고에 저장' }))
+    expect(screen.getByText('2개 재료를 냉장고에 저장할까요?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '저장 확정' }))
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledTimes(3))
+    expect(postMock).toHaveBeenLastCalledWith('/api/inventory/items:batch?today=2026-04-07', {
+      expectedVersion: 0,
+      items: [...recognition.items, secondItem],
+    })
+  })
+
+  it('일부 사진만 실패하면 성공한 결과를 유지하고 실패한 사진만 다시 인식한다', async () => {
+    const user = userEvent.setup()
+    const secondItem = {
+      ...recognition.items[0],
+      id: '423e4567-e89b-42d3-a456-426614174000',
+      name: '두부',
+    }
+    postMock
+      .mockResolvedValueOnce(recognition)
+      .mockRejectedValueOnce(new ApiError(502, 'RECOGNITION_FAILED', '인식에 실패했어요.', true))
+      .mockResolvedValueOnce({ ...recognition, items: [secondItem] })
+    renderPage()
+
+    await user.upload(screen.getByLabelText('영수증 사진 또는 주문내역 캡처 올리기'), [
+      new File(['image-1'], 'receipt.png', { type: 'image/png' }),
+      new File(['image-2'], 'order.png', { type: 'image/png' }),
+    ])
+
+    expect(
+      await screen.findByText('사진 1장은 인식하지 못했어요. 나머지 사진의 재료만 보여드려요.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('양파')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '실패한 사진 다시 시도' }))
+
+    expect(await screen.findByText('두부')).toBeInTheDocument()
+    expect(screen.getByText('양파')).toBeInTheDocument()
+    expect(postMock).toHaveBeenCalledTimes(3)
+    // 실패한 사진은 이미 JPEG로 변환해 두었으므로 다시 변환하지 않는다.
+    expect(processImageMock).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText(/장은 인식하지 못했어요/)).not.toBeInTheDocument()
+  })
+
+  it('한 번에 5장보다 많이 고르면 앞의 5장만 인식한다', async () => {
+    const user = userEvent.setup()
+    postMock.mockResolvedValue({ ...recognition, items: [] })
+    renderPage()
+
+    await user.upload(
+      screen.getByLabelText('영수증 사진 또는 주문내역 캡처 올리기'),
+      Array.from({ length: 6 }, (_, index) =>
+        new File([`image-${index}`], `receipt-${index}.png`, { type: 'image/png' }),
+      ),
+    )
+
+    expect(
+      await screen.findByText('한 번에 5장까지 올릴 수 있어서 앞의 5장만 인식해요.'),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(postMock).toHaveBeenCalledTimes(5))
+    expect(processImageMock).toHaveBeenCalledTimes(5)
+  })
 })

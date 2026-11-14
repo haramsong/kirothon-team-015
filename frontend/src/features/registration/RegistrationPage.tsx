@@ -17,6 +17,19 @@ import {
 
 type RegistrationStatus = 'idle' | 'processing' | 'recognizing' | 'ready' | 'saving' | 'error'
 
+type ImageState = 'pending' | 'done' | 'failed'
+
+interface ImageEntry {
+  id: string
+  file: File
+  processed: ProcessedImage | null
+  state: ImageState
+}
+
+// 사진은 한 장씩 차례로 인식해 요청마다 Lambda 제한 시간 안에 끝나게 한다.
+// 기다리는 시간이 너무 길어지지 않도록 한 번에 5장까지 받는다.
+const MAX_IMAGES_PER_SELECTION = 5
+
 interface BatchInventoryResponse {
   inventory: InventoryDto
   savedCount: number
@@ -37,6 +50,50 @@ function useObjectUrl(value: Blob | null): string | null {
   }, [value])
 
   return url
+}
+
+function ImagePreview({
+  alt,
+  compact,
+  entry,
+}: {
+  alt: string
+  compact: boolean
+  entry: ImageEntry
+}) {
+  const originalUrl = useObjectUrl(entry.file)
+  const processedUrl = useObjectUrl(entry.processed?.blob ?? null)
+  const src = processedUrl ?? originalUrl
+  if (!src) return null
+
+  if (compact) {
+    const stateLabel =
+      entry.state === 'failed' ? '인식 실패' : entry.state === 'done' ? '인식 완료' : '대기 중'
+    const stateColor =
+      entry.state === 'failed'
+        ? 'text-red-700'
+        : entry.state === 'done'
+          ? 'text-emerald-700'
+          : 'text-stone-500'
+    return (
+      <li className="overflow-hidden rounded-xl border border-stone-200 bg-white p-1.5">
+        <img alt={alt} className="h-20 w-full rounded-lg object-cover" src={src} />
+        <p className={`mt-1 text-center text-[11px] font-semibold ${stateColor}`}>{stateLabel}</p>
+      </li>
+    )
+  }
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
+      <img alt={alt} className="max-h-64 w-full rounded-xl object-contain" src={src} />
+      <p className="mt-2 truncate text-xs text-stone-500">{entry.file.name}</p>
+      {entry.processed && (
+        <p className="mt-1 text-xs text-emerald-700">
+          JPEG 변환 완료 · {entry.processed.width}×{entry.processed.height}px
+        </p>
+      )}
+    </div>
+  )
 }
 
 function toMessage(error: unknown, fallback: string): string {
@@ -64,71 +121,97 @@ export function RegistrationPage() {
   const { lastSuccessfulInventory, replaceInventory, today } = useInventory()
   const { showToast } = useToast()
   const [status, setStatus] = useState<RegistrationStatus>('idle')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [processedImage, setProcessedImage] = useState<ProcessedImage | null>(null)
+  const [images, setImages] = useState<ImageEntry[]>([])
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [recognition, setRecognition] = useState<RecognitionResultDto | null>(null)
   const [editingItem, setEditingItem] = useState<InventoryItemDto | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSaveConfirming, setIsSaveConfirming] = useState(false)
-  const originalPreviewUrl = useObjectUrl(selectedFile)
-  const processedPreviewUrl = useObjectUrl(processedImage?.blob ?? null)
   const isBusy = status === 'processing' || status === 'recognizing' || status === 'saving'
+  const failedImages = images.filter((image) => image.state === 'failed')
+  const isMultiple = images.length > 1
 
-  async function recognizeImage(image: ProcessedImage) {
-    setStatus('recognizing')
-    setErrorMessage(null)
-    const formData = new FormData()
-    formData.append('image', image.blob, 'shopping-image.jpg')
-
-    try {
-      const result = await apiClient.post<RecognitionResultDto>('/api/recognitions', formData)
-      setRecognition(result)
-      setStatus('ready')
-    } catch (error) {
-      setStatus('error')
-      setErrorMessage(toMessage(error, '사진에서 재료를 인식하지 못했어요.'))
-    }
+  function updateImage(id: string, patch: Partial<ImageEntry>) {
+    setImages((current) =>
+      current.map((image) => (image.id === id ? { ...image, ...patch } : image)),
+    )
   }
 
-  async function prepareAndRecognize(file: File) {
-    setStatus('processing')
+  async function recognizeImages(targets: ImageEntry[], base: RecognitionResultDto | null) {
     setErrorMessage(null)
-    setRecognition(null)
-    setProcessedImage(null)
     setIsSaveConfirming(false)
+    let merged = base
+    let lastError: string | null = null
 
-    try {
-      const processed = await processImage(file)
-      setProcessedImage(processed)
-      await recognizeImage(processed)
-    } catch (error) {
+    for (const [index, image] of targets.entries()) {
+      setProgress({ current: index + 1, total: targets.length })
+      let processed = image.processed
+      try {
+        if (!processed) {
+          setStatus('processing')
+          processed = await processImage(image.file)
+          updateImage(image.id, { processed })
+        }
+        setStatus('recognizing')
+        const formData = new FormData()
+        formData.append('image', processed.blob, 'shopping-image.jpg')
+        const result = await apiClient.post<RecognitionResultDto>('/api/recognitions', formData)
+        // 여러 장의 인식 결과를 확인 목록 하나로 합친다. 같은 이름은 저장할 때 서버가 병합한다.
+        merged = merged ? { ...merged, items: [...merged.items, ...result.items] } : result
+        updateImage(image.id, { state: 'done' })
+      } catch (error) {
+        lastError = processed
+          ? toMessage(error, '사진에서 재료를 인식하지 못했어요.')
+          : toMessage(error, '사진을 처리하지 못했어요. 다시 시도해 주세요.')
+        updateImage(image.id, { state: 'failed' })
+      }
+    }
+
+    setProgress(null)
+    setRecognition(merged)
+    if (merged) {
+      setStatus('ready')
+    } else {
       setStatus('error')
-      setErrorMessage(toMessage(error, '사진을 처리하지 못했어요. 다시 시도해 주세요.'))
+      setErrorMessage(lastError)
     }
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+    const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-    if (!file || isBusy) return
+    if (files.length === 0 || isBusy) return
 
-    if (!isSupportedImage(file)) {
+    const supported = files.filter(isSupportedImage)
+    if (supported.length === 0) {
       setErrorMessage('사진 파일만 올릴 수 있어요')
       setStatus('error')
       return
     }
 
-    setSelectedFile(file)
-    void prepareAndRecognize(file)
+    const notices: string[] = []
+    if (supported.length < files.length) {
+      notices.push(`사진이 아닌 파일 ${files.length - supported.length}개는 뺐어요.`)
+    }
+    if (supported.length > MAX_IMAGES_PER_SELECTION) {
+      notices.push(
+        `한 번에 ${MAX_IMAGES_PER_SELECTION}장까지 올릴 수 있어서 앞의 ${MAX_IMAGES_PER_SELECTION}장만 인식해요.`,
+      )
+    }
+    const entries: ImageEntry[] = supported
+      .slice(0, MAX_IMAGES_PER_SELECTION)
+      .map((file) => ({ id: crypto.randomUUID(), file, processed: null, state: 'pending' }))
+
+    setNotice(notices.length > 0 ? notices.join(' ') : null)
+    setImages(entries)
+    setRecognition(null)
+    void recognizeImages(entries, null)
   }
 
-  function retrySameImage() {
-    if (isBusy) return
-    if (processedImage) {
-      void recognizeImage(processedImage)
-    } else if (selectedFile) {
-      void prepareAndRecognize(selectedFile)
-    }
+  function retryFailedImages() {
+    if (isBusy || failedImages.length === 0) return
+    void recognizeImages(failedImages, recognition)
   }
 
   function startDirectEntry() {
@@ -207,6 +290,7 @@ export function RegistrationPage() {
           aria-label="영수증 사진 또는 주문내역 캡처 올리기"
           className="sr-only"
           disabled={isBusy}
+          multiple
           onChange={handleFileChange}
           ref={fileInputRef}
           type="file"
@@ -219,28 +303,33 @@ export function RegistrationPage() {
         >
           영수증 사진 또는 주문내역 캡처 올리기
         </button>
+        <p className="mt-2 text-center text-xs text-stone-500">
+          여러 장을 한 번에 고를 수 있어요 (최대 {MAX_IMAGES_PER_SELECTION}장)
+        </p>
 
-        {originalPreviewUrl && (
-          <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
-            <img
-              alt="선택한 장보기 이미지"
-              className="max-h-64 w-full rounded-xl object-contain"
-              src={processedPreviewUrl ?? originalPreviewUrl}
-            />
-            <p className="mt-2 truncate text-xs text-stone-500">{selectedFile?.name}</p>
-            {processedImage && (
-              <p className="mt-1 text-xs text-emerald-700">
-                JPEG 변환 완료 · {processedImage.width}×{processedImage.height}px
-              </p>
-            )}
-          </div>
+        {images.length === 1 && (
+          <ImagePreview alt="선택한 장보기 이미지" compact={false} entry={images[0]} />
         )}
+        {isMultiple && (
+          <ul aria-label="선택한 장보기 이미지 목록" className="mt-5 grid grid-cols-3 gap-2">
+            {images.map((image, index) => (
+              <ImagePreview
+                alt={`선택한 장보기 이미지 ${index + 1}`}
+                compact
+                entry={image}
+                key={image.id}
+              />
+            ))}
+          </ul>
+        )}
+        {notice && <p className="mt-3 text-xs text-stone-600">{notice}</p>}
 
         {(status === 'processing' || status === 'recognizing') && (
           <div className="mt-5 rounded-2xl bg-white p-5 text-center shadow-sm" role="status">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600" />
             <p className="mt-3 text-sm font-semibold">
               {status === 'processing' ? '사진 처리 중이에요' : '재료 인식 중이에요'}
+              {progress && progress.total > 1 ? ` (${progress.current}/${progress.total})` : ''}
             </p>
           </div>
         )}
@@ -249,14 +338,14 @@ export function RegistrationPage() {
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4" role="alert">
             <p className="text-sm font-medium text-red-800">{errorMessage}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {selectedFile && (
+              {failedImages.length > 0 && (
                 <button
                   className="rounded-lg bg-red-700 px-3 py-2 text-sm font-bold text-white"
                   disabled={isBusy}
-                  onClick={retrySameImage}
+                  onClick={retryFailedImages}
                   type="button"
                 >
-                  같은 이미지 다시 시도
+                  {isMultiple ? '실패한 사진 다시 시도' : '같은 이미지 다시 시도'}
                 </button>
               )}
               <button
@@ -295,6 +384,22 @@ export function RegistrationPage() {
                 품목 추가
               </button>
             </div>
+
+            {failedImages.length > 0 && status === 'ready' && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-medium text-amber-900">
+                  사진 {failedImages.length}장은 인식하지 못했어요. 나머지 사진의 재료만 보여드려요.
+                </p>
+                <button
+                  className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white"
+                  disabled={isBusy}
+                  onClick={retryFailedImages}
+                  type="button"
+                >
+                  실패한 사진 다시 시도
+                </button>
+              </div>
+            )}
 
             {recognition.items.length === 0 ? (
               <div className="mt-4 rounded-2xl border border-dashed border-stone-300 bg-white p-6 text-center">
