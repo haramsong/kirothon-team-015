@@ -377,3 +377,36 @@ frontend build에는 stack output의 ApiUrl에서 마지막 `/`를 제거한 값
 | Invalidation | `I7S5Y7G3BHIJJMCJW3AHCKKG4X`, `/*`, `Completed` |
 
 검증 기록에는 자격 증명, OIDC token 또는 사용자 데이터가 포함되지 않습니다.
+
+## Task 4: CI와 OIDC 정적 검증 체크포인트
+
+검증 기준 revision은 `b40298d5aeaeef6c82b7f4fbb6d6f38ca6e73f95`이며, 검증 시각은 `2026-11-14T07:06:57Z`입니다. Git branch `main`, origin `https://github.com/haramsong/my-own-fridge.git`, 로컬 AWS 프로파일 `default`, 리전 `ap-northeast-2`, STS 계정 `462747820533`이 승인 대상과 일치한 뒤 검증했습니다.
+
+### 자동 검증 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| `./scripts/validate-ci.sh` | 통과 |
+| 핵심 데모 종단 간 테스트 | 3개 통과 |
+| 핵심 백엔드 테스트 | 77개 통과 |
+| 핵심 프론트엔드 테스트 | 44개 통과 |
+| 선택 식단 백엔드 테스트 | 11개 통과 |
+| 선택 식단 프론트엔드 테스트 | 4개 통과 |
+| TypeScript 검사와 production build | 통과 |
+| 배포 자동화 테스트 | 63개 통과 |
+| Application SAM template 검증과 build | 통과 |
+| Bootstrap CloudFormation `validate-template` | 통과 |
+| Bootstrap SAM template 검증 | 통과 |
+
+백엔드 테스트에서는 Starlette `BlockingPortal` 별칭의 향후 제거를 알리는 경고만 발생했으며 테스트 실패는 없었습니다.
+
+### 권한, OIDC 및 금지 패턴 확인
+
+- CI workflow의 workflow-level 권한은 `contents: read` 하나뿐입니다.
+- CD workflow의 workflow-level 권한은 `contents: read`와 `id-token: write`뿐입니다.
+- 실제 GitHub OIDC 설정은 immutable subject를 사용하며 prefix가 `repo:haramsong@61612250/my-own-fridge@1457328764`입니다.
+- 실제 IAM 역할의 trust subject는 `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main`, audience는 `sts.amazonaws.com`으로 정확히 제한되어 있습니다. 템플릿 값도 실제 IAM 값과 일치합니다.
+- workflow, template 및 실행 스크립트에서 장기 AWS access key 값, AWS credential 파일 쓰기, 배포용 S3 `--delete`, force push 실행을 찾지 못했습니다. Force 옵션 문자열은 `assert-git-target.sh`의 거부 목록에만 존재합니다.
+- 로컬 배포 스크립트, 로컬 CI 스크립트와 runbook에서 추출한 AWS CLI·SAM 명령 38개는 모두 `default` 프로파일과 `ap-northeast-2` 리전을 명시합니다. GitHub Actions는 로컬 프로파일 대신 OIDC 단기 환경 자격 증명을 사용합니다.
+
+모든 체크포인트 조건을 충족했고 후속 확인이 필요한 질문은 없습니다. Task 4 결론은 **통과**입니다.
