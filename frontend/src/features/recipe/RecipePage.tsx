@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../api/client'
 import { getExpirationDisplay, sortInventoryItems } from '../../logic/date'
@@ -7,6 +7,7 @@ import type { MealRecommendationDto, RecipeDto } from '../../models/types'
 import { DeductionModal } from '../deduction/DeductionModal'
 import { useDevice } from '../device/DeviceProvider'
 import { useInventory } from '../inventory/InventoryProvider'
+import { useMealPlan } from '../meal-plan/MealPlanProvider'
 import { useToast } from '../toast/ToastProvider'
 
 type RequestStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -17,6 +18,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 export function RecipePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { apiClient } = useDevice()
   const {
     inventory,
@@ -25,9 +27,18 @@ export function RecipePage() {
     status: inventoryStatus,
     today,
   } = useInventory()
+  const { mealPlan, markMealCompleted } = useMealPlan()
   const { showToast } = useToast()
+  const mealPlanMealId =
+    typeof (location.state as { mealPlanMealId?: unknown } | null)?.mealPlanMealId === 'string'
+      ? (location.state as { mealPlanMealId: string }).mealPlanMealId
+      : null
+  const planMeal = mealPlan?.meals.find((meal) => meal.id === mealPlanMealId) ?? null
+  const isMealPlanMode = mealPlanMealId !== null
   const displayedInventory = inventory ?? lastSuccessfulInventory
-  const [recommendation, setRecommendation] = useState<MealRecommendationDto | null>(null)
+  const [recommendation, setRecommendation] = useState<MealRecommendationDto | null>(
+    planMeal?.recommendation ?? null,
+  )
   const [isDeductionOpen, setIsDeductionOpen] = useState(false)
   const [recommendationStatus, setRecommendationStatus] = useState<RequestStatus>('idle')
   const [recommendationError, setRecommendationError] = useState<string | null>(null)
@@ -104,17 +115,33 @@ export function RecipePage() {
   )
 
   useEffect(() => {
-    if (
-      initialRequestStarted.current ||
-      !displayedInventory ||
-      displayedInventory.items.length === 0
-    ) {
+    if (initialRequestStarted.current) return
+
+    if (isMealPlanMode) {
+      if (!planMeal) {
+        navigate('/', { replace: true })
+        return
+      }
+
+      initialRequestStarted.current = true
+      setRecommendation(planMeal.recommendation)
+      setRecommendationStatus('success')
+      void requestRecipe(planMeal.recommendation)
       return
     }
 
+    if (!displayedInventory || displayedInventory.items.length === 0) return
+
     initialRequestStarted.current = true
     void requestRecommendation()
-  }, [displayedInventory, requestRecommendation])
+  }, [
+    displayedInventory,
+    isMealPlanMode,
+    navigate,
+    planMeal,
+    requestRecommendation,
+    requestRecipe,
+  ])
 
   const isInventoryLoading = inventoryStatus === 'loading' && displayedInventory === null
   const hasUsableInventory = sortedItems.length > 0
@@ -123,11 +150,17 @@ export function RecipePage() {
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-6 text-stone-900">
       <section className="mx-auto w-full md:max-w-[480px]">
-        <Link className="text-sm font-bold text-emerald-700" to="/">
-          ← 냉장고로
+        <Link className="text-sm font-bold text-emerald-700" to={isMealPlanMode ? '/meal-plan' : '/'}>
+          {isMealPlanMode ? '← 3일 식단으로' : '← 냉장고로'}
         </Link>
-        <p className="mt-5 text-sm font-semibold text-emerald-700">임박 재료 먼저</p>
-        <h1 className="mt-1 text-2xl font-bold">한 끼 추천</h1>
+        <p className="mt-5 text-sm font-semibold text-emerald-700">
+          {isMealPlanMode && planMeal
+            ? `${planMeal.day}일차 ${planMeal.slot}`
+            : '임박 재료 먼저'}
+        </p>
+        <h1 className="mt-1 text-2xl font-bold">
+          {isMealPlanMode ? '식단 레시피' : '한 끼 추천'}
+        </h1>
 
         {isInventoryLoading && (
           <div className="mt-8 text-center" role="status">
@@ -190,17 +223,21 @@ export function RecipePage() {
           <article className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-emerald-700">오늘의 한 끼</p>
+                <p className="text-xs font-bold text-emerald-700">
+                  {isMealPlanMode ? '3일 식단 메뉴' : '오늘의 한 끼'}
+                </p>
                 <h2 className="mt-1 text-xl font-bold">{recommendation.menuName}</h2>
               </div>
-              <button
-                className="rounded-lg border border-stone-300 px-3 py-2 text-xs font-bold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isRecommendationLoading}
-                onClick={() => void requestRecommendation(recommendation.menuName)}
-                type="button"
-              >
-                다른 메뉴 추천
-              </button>
+              {!isMealPlanMode && (
+                <button
+                  className="rounded-lg border border-stone-300 px-3 py-2 text-xs font-bold text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isRecommendationLoading}
+                  onClick={() => void requestRecommendation(recommendation.menuName)}
+                  type="button"
+                >
+                  다른 메뉴 추천
+                </button>
+              )}
             </div>
 
             <section className="mt-5" aria-labelledby="ingredient-heading">
@@ -286,7 +323,12 @@ export function RecipePage() {
                 : ''
             showToast(`${result.deductedCount}개 재료를 차감했어요.${removedMessage}`)
             setIsDeductionOpen(false)
-            navigate('/')
+            if (isMealPlanMode && planMeal) {
+              markMealCompleted(planMeal.id)
+              navigate('/meal-plan', { replace: true, state: { mealPlanSession: true } })
+            } else {
+              navigate('/')
+            }
           }}
           recommendation={recommendation}
           today={today}

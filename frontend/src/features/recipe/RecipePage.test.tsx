@@ -1,10 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { useEffect } from 'react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, vi } from 'vitest'
 
 import { ApiError } from '../../api/client'
-import type { InventoryDto, MealRecommendationDto, RecipeDto } from '../../models/types'
+import type {
+  InventoryDto,
+  MealPlanDto,
+  MealRecommendationDto,
+  RecipeDto,
+} from '../../models/types'
+import { MealPlanPage } from '../meal-plan/MealPlanPage'
+import { MealPlanProvider, useMealPlan } from '../meal-plan/MealPlanProvider'
 import { RecipePage } from './RecipePage'
 
 const { postMock, replaceInventoryMock, showToastMock } = vi.hoisted(() => ({
@@ -80,7 +88,47 @@ function deferred<T>() {
 function renderPage() {
   return render(
     <MemoryRouter>
-      <RecipePage />
+      <MealPlanProvider>
+        <RecipePage />
+      </MealPlanProvider>
+    </MemoryRouter>,
+  )
+}
+
+const mealPlan: MealPlanDto = {
+  id: 'plan-1',
+  inventoryVersion: currentInventory.version,
+  meals: [
+    {
+      id: 'meal-1',
+      day: 1,
+      slot: '점심',
+      recommendation,
+    },
+  ],
+}
+
+function SeededMealPlanRecipe() {
+  const { mealPlan: savedMealPlan, saveMealPlan } = useMealPlan()
+
+  useEffect(() => {
+    if (!savedMealPlan) saveMealPlan(mealPlan, currentInventory)
+  }, [saveMealPlan, savedMealPlan])
+
+  return savedMealPlan ? <RecipePage /> : null
+}
+
+function renderMealPlanRecipe() {
+  return render(
+    <MemoryRouter
+      initialEntries={[{ pathname: '/recipe', state: { mealPlanMealId: 'meal-1' } }]}
+    >
+      <MealPlanProvider>
+        <Routes>
+          <Route element={<SeededMealPlanRecipe />} path="/recipe" />
+          <Route element={<MealPlanPage />} path="/meal-plan" />
+        </Routes>
+      </MealPlanProvider>
     </MemoryRouter>,
   )
 }
@@ -212,5 +260,36 @@ describe('RecipePage', () => {
         { itemId: 'egg', quantity: 0.5 },
       ],
     })
+  })
+
+  it('식단 끼니는 추천 생성 없이 레시피를 재사용하고 차감 성공 뒤 해당 끼니만 완료한다', async () => {
+    const user = userEvent.setup()
+    const updatedInventory: InventoryDto = {
+      version: 4,
+      items: [
+        { ...currentInventory.items[0], quantity: 7 },
+        { ...currentInventory.items[1], quantity: 3.5 },
+      ],
+    }
+    postMock
+      .mockResolvedValueOnce(recipe)
+      .mockResolvedValueOnce({
+        inventory: updatedInventory,
+        deductedCount: 2,
+        removedNames: [],
+      })
+
+    renderMealPlanRecipe()
+
+    expect(await screen.findByRole('heading', { name: '식단 레시피' })).toBeInTheDocument()
+    expect(screen.getByText('1일차 점심')).toBeInTheDocument()
+    expect(postMock).toHaveBeenNthCalledWith(1, '/api/recipes', { recommendation })
+    expect(postMock).not.toHaveBeenCalledWith('/api/recommendations', expect.anything())
+
+    await user.click(screen.getByRole('button', { name: '요리했어요' }))
+    await user.click(screen.getByRole('button', { name: '재고에서 차감하기' }))
+
+    expect(await screen.findByText('6개 끼니')).toBeInTheDocument()
+    expect(screen.getByText('완료')).toBeInTheDocument()
   })
 })
