@@ -299,3 +299,32 @@
 
 - 별도 선택 없이 명세의 추천 순서를 적용했습니다.
 - SAM 검증과 로컬 smoke 결합은 Task 9.4 범위이며 이번 명령에는 포함하지 않았습니다.
+
+### Task 9.4: SAM 템플릿 로컬 검증 순서 고정
+
+상태: **완료**
+
+구현 결과:
+
+- `scripts/verify-local.sh` 단일 비대화형 명령에서 Vite+uvicorn 로컬 smoke, 전체 자동 테스트와 프로덕션 빌드, `sam validate`, `sam build`를 순서대로 실행하도록 고정했습니다.
+- 앞 단계가 실패하면 해당 종료 코드를 그대로 반환하고 이후 단계를 실행하지 않습니다. 따라서 smoke와 전체 자동 검증이 모두 성공한 경우에만 SAM 검증과 빌드가 실행됩니다.
+- SAM 명령에는 `--profile default --region ap-northeast-2`를 명시했으며 배포 명령은 포함하지 않았습니다.
+- 스크립트 순서, SAM 명령 인자, 전체 검증 실패 시 SAM 미실행, SAM 실패 코드 보존을 자동 테스트로 검증했습니다.
+
+검증:
+
+- `./scripts/verify-local.sh`: 통과
+- Vite+uvicorn 로컬 smoke: API health, SPA index, CORS, 임시 프로세스 종료 확인 통과
+- 핵심 데모 종단 간 테스트: 3개 통과
+- 핵심 백엔드 테스트: 77개 통과
+- 핵심 프론트엔드 Vitest: 11개 파일, 44개 테스트 통과
+- 선택 식단 백엔드 테스트: 11개 통과
+- 선택 식단 프론트엔드 Vitest: 3개 파일, 4개 테스트 통과
+- TypeScript 검사와 Vite 프로덕션 빌드: 통과
+- `sam validate --profile default --region ap-northeast-2`: 유효한 SAM 템플릿 확인
+- `sam build --profile default --region ap-northeast-2`: Python 3.13 arm64 Lambda 빌드 성공
+
+결정/제약:
+
+- 별도 선택 없이 명세의 추천 순서를 적용했습니다.
+- AWS 배포는 수행하지 않았습니다.
