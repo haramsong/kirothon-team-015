@@ -57,3 +57,28 @@
 결정/제약:
 - 추천 경로와 남은 제약
 ```
+
+### Task 5.1: 추천·조리 단계 backend service와 endpoint
+
+상태: **완료**
+
+구현 결과:
+
+- `POST /api/recommendations`에서 `clientDate` 기준 지난 재료를 제외하고, 0~3일 남은 임박 재료 중 가장 이른 품목을 우선 선택합니다. 임박 재료가 없으면 비만료 재료 중 가장 이른 품목을 선택합니다.
+- `emit_recommendation` strict tool schema와 강제 tool 선택을 기존 Bedrock gateway에 추가했습니다.
+- 추천 결과의 재고 품목 ID, 우선 품목 포함, 0.5개 이상·현재 재고 이하 사용량, 기본 양념 8종, 직전 메뉴 이름 제외를 서버에서 의미 검증합니다.
+- `POST /api/recipes`에서 추천 결과를 입력받아 `emit_recipe`를 별도 호출하고, 추천 재료와 기본 양념만 사용하는 1~8단계 조리 순서를 반환합니다.
+- 추천과 조리 순서 모두 첫 결과 검증 실패 시 8초 이상 남은 경우에만 한 번 교정합니다. timeout은 `LLM_TIMEOUT`, 호출 실패는 `GENERATION_FAILED`, 재검증 실패는 `INVALID_MODEL_OUTPUT`으로 매핑합니다.
+- 기존 요청별 27초 deadline, 공통 성공·오류 envelope, `X-Device-Id` 검증과 DynamoDB 재고 저장소 경계를 그대로 재사용했습니다.
+- 기본 양념 상수를 공통 모듈로 이동해 인식과 추천 검증이 같은 8종 목록을 사용하게 했습니다.
+
+검증:
+
+- `backend/.venv/bin/python -m pytest`: 49개 테스트 통과
+- `backend/.venv/bin/python -m compileall -q app tests`: 통과
+- 기존 의존성의 Starlette `BlockingPortal` deprecation warning 1건 외 실패 없음
+
+결정/제약:
+
+- 명세의 추천 경로를 별도 선택 요청 없이 적용했습니다.
+- Task 5.3~5.6의 property test와 프론트엔드 추천 화면은 이번 Task 범위에 포함하지 않았습니다.

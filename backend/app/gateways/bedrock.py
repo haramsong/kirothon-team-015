@@ -1,3 +1,4 @@
+import json
 import math
 import time
 from collections.abc import Callable
@@ -8,6 +9,9 @@ from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError, ConnectTimeoutError, ReadTimeoutError
 
 RECOGNITION_TOOL_NAME = "emit_recognition"
+RECOMMENDATION_TOOL_NAME = "emit_recommendation"
+RECIPE_TOOL_NAME = "emit_recipe"
+
 RECOGNITION_TOOL_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -41,6 +45,52 @@ RECOGNITION_TOOL_SCHEMA: dict[str, Any] = {
         },
     },
     "required": ["purchase_date", "items"],
+    "additionalProperties": False,
+}
+
+RECOMMENDATION_TOOL_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "menu_name": {"type": "string", "minLength": 1, "maxLength": 80},
+        "ingredients": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string", "minLength": 1},
+                    "use_half_units": {"type": "integer", "minimum": 1},
+                },
+                "required": ["item_id", "use_half_units"],
+                "additionalProperties": False,
+            },
+        },
+        "seasonings": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+        },
+    },
+    "required": ["menu_name", "ingredients", "seasonings"],
+    "additionalProperties": False,
+}
+
+RECIPE_TOOL_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "ingredient_names": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
+        },
+        "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {"type": "string", "minLength": 1},
+        },
+    },
+    "required": ["ingredient_names", "steps"],
     "additionalProperties": False,
 }
 
@@ -84,10 +134,6 @@ class BedrockGateway:
         correction: str | None = None,
     ) -> dict[str, Any]:
         """이미지에서 strict 도구 입력을 생성하고 원시 입력을 반환합니다."""
-        remaining = deadline - self._clock()
-        if remaining <= 0:
-            raise BedrockTimeoutError("인식 요청 기한이 지났습니다.")
-
         prompt = (
             "이 이미지는 마트 영수증 또는 온라인 주문내역입니다. 식품만 추출하고 "
             "수량은 0.5개를 1로 하는 quantity_half_units 정수로 변환하세요. "
@@ -95,35 +141,110 @@ class BedrockGateway:
             "이미지에 구매일이나 소비기한이 명시되지 않았다면 null을 사용하세요."
         )
         if correction:
-            prompt += f"\n이전 결과를 다음 이유로 사용할 수 없습니다. 스키마와 의미를 고쳐 다시 생성하세요: {correction}"
+            prompt += self._correction_prompt(correction)
+
+        return self._converse_with_tool(
+            deadline=deadline,
+            tool_name=RECOGNITION_TOOL_NAME,
+            tool_description="장보기 이미지에서 식재료 정보를 추출합니다.",
+            tool_schema=RECOGNITION_TOOL_SCHEMA,
+            content=[
+                {"text": prompt},
+                {"image": {"format": "jpeg", "source": {"bytes": image_bytes}}},
+            ],
+            max_tokens=3000,
+        )
+
+    def emit_recommendation(
+        self,
+        inventory_context: list[dict[str, Any]],
+        priority_item_id: str,
+        deadline: float,
+        excluded_menu_name: str | None = None,
+        correction: str | None = None,
+    ) -> dict[str, Any]:
+        """사용 가능한 재고로 한 끼 추천 도구 입력을 생성합니다."""
+        prompt = (
+            "다음 재고만 사용해 1인분 메뉴 하나를 추천하세요. "
+            "priority_item_id 품목을 반드시 포함하고 각 사용량은 0.5개를 1로 하는 "
+            "use_half_units 정수로 반환하세요. 재고 수량을 넘기지 마세요. "
+            "양념은 소금, 설탕, 간장, 식용유, 후추, 참기름, 식초, 고춧가루만 허용됩니다.\n"
+            f"priority_item_id: {priority_item_id}\n"
+            f"사용 가능한 재고: {json.dumps(inventory_context, ensure_ascii=False)}"
+        )
+        if excluded_menu_name:
+            prompt += f"\n직전 메뉴와 다른 이름을 사용하세요. 직전 메뉴: {excluded_menu_name}"
+        if correction:
+            prompt += self._correction_prompt(correction)
+
+        return self._converse_with_tool(
+            deadline=deadline,
+            tool_name=RECOMMENDATION_TOOL_NAME,
+            tool_description="현재 재고로 만들 한 끼 메뉴와 예상 사용량을 생성합니다.",
+            tool_schema=RECOMMENDATION_TOOL_SCHEMA,
+            content=[{"text": prompt}],
+            max_tokens=1800,
+        )
+
+    def emit_recipe(
+        self,
+        recommendation_context: dict[str, Any],
+        deadline: float,
+        correction: str | None = None,
+    ) -> dict[str, Any]:
+        """승인된 추천 메뉴의 조리 단계를 별도 도구 호출로 생성합니다."""
+        prompt = (
+            "다음 1인분 추천 메뉴의 조리 순서를 1~8단계로 작성하세요. "
+            "ingredient_names에는 실제 조리 단계에서 언급한 재료 이름을 모두 넣으세요. "
+            "추천 재료와 기본 양념(소금, 설탕, 간장, 식용유, 후추, 참기름, 식초, 고춧가루) "
+            "외의 재료는 사용하지 마세요.\n"
+            f"추천 메뉴: {json.dumps(recommendation_context, ensure_ascii=False)}"
+        )
+        if correction:
+            prompt += self._correction_prompt(correction)
+
+        return self._converse_with_tool(
+            deadline=deadline,
+            tool_name=RECIPE_TOOL_NAME,
+            tool_description="추천 메뉴에 허용된 재료만 사용하는 조리 단계를 생성합니다.",
+            tool_schema=RECIPE_TOOL_SCHEMA,
+            content=[{"text": prompt}],
+            max_tokens=1800,
+        )
+
+    def _converse_with_tool(
+        self,
+        *,
+        deadline: float,
+        tool_name: str,
+        tool_description: str,
+        tool_schema: dict[str, Any],
+        content: list[dict[str, Any]],
+        max_tokens: int,
+    ) -> dict[str, Any]:
+        remaining = deadline - self._clock()
+        if remaining <= 0:
+            raise BedrockTimeoutError("요청 기한이 지났습니다.")
 
         client = self._client or self._client_factory(self._timeout_config(remaining))
         try:
             response = client.converse(
                 modelId=self._model_id,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"text": prompt},
-                            {"image": {"format": "jpeg", "source": {"bytes": image_bytes}}},
-                        ],
-                    }
-                ],
+                messages=[{"role": "user", "content": content}],
                 toolConfig={
                     "tools": [
                         {
                             "toolSpec": {
-                                "name": RECOGNITION_TOOL_NAME,
-                                "description": "장보기 이미지에서 식재료 정보를 추출합니다.",
+                                "name": tool_name,
+                                "description": tool_description,
                                 "strict": True,
-                                "inputSchema": {"json": RECOGNITION_TOOL_SCHEMA},
+                                "inputSchema": {"json": tool_schema},
                             }
                         }
                     ],
-                    "toolChoice": {"tool": {"name": RECOGNITION_TOOL_NAME}},
+                    "toolChoice": {"tool": {"name": tool_name}},
                 },
-                inferenceConfig={"maxTokens": 3000, "temperature": 0},
+                inferenceConfig={"maxTokens": max_tokens, "temperature": 0},
             )
         except (ReadTimeoutError, ConnectTimeoutError, TimeoutError) as error:
             raise BedrockTimeoutError("Bedrock 응답 시간이 초과되었습니다.") from error
@@ -131,11 +252,13 @@ class BedrockGateway:
             raise BedrockGatewayError("Bedrock 호출에 실패했습니다.") from error
 
         if self._clock() >= deadline:
-            raise BedrockTimeoutError("인식 요청 기한을 초과했습니다.")
-        return self._extract_tool_input(response)
+            raise BedrockTimeoutError("요청 기한을 초과했습니다.")
+        return self._extract_tool_input(response, tool_name)
 
     @staticmethod
-    def _extract_tool_input(response: dict[str, Any]) -> dict[str, Any]:
+    def _extract_tool_input(
+        response: dict[str, Any], tool_name: str
+    ) -> dict[str, Any]:
         try:
             content = response["output"]["message"]["content"]
         except (KeyError, TypeError) as error:
@@ -145,11 +268,18 @@ class BedrockGateway:
             tool_use = block.get("toolUse") if isinstance(block, dict) else None
             if (
                 isinstance(tool_use, dict)
-                and tool_use.get("name") == RECOGNITION_TOOL_NAME
+                and tool_use.get("name") == tool_name
                 and isinstance(tool_use.get("input"), dict)
             ):
                 return tool_use["input"]
-        raise BedrockInvalidOutputError("emit_recognition 도구 입력이 없습니다.")
+        raise BedrockInvalidOutputError(f"{tool_name} 도구 입력이 없습니다.")
+
+    @staticmethod
+    def _correction_prompt(correction: str) -> str:
+        return (
+            "\n이전 결과를 다음 이유로 사용할 수 없습니다. "
+            f"스키마와 의미를 고쳐 다시 생성하세요: {correction}"
+        )
 
     @staticmethod
     def _timeout_config(remaining: float) -> Config:

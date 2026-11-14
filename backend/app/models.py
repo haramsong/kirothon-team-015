@@ -67,6 +67,42 @@ class RecognitionResultDto(ApiModel):
     items: list[InventoryItemDto]
 
 
+class MealIngredientDto(ApiModel):
+    item_id: UUID
+    name: Annotated[str, Field(min_length=1, max_length=80)]
+    quantity: Quantity
+
+
+class MealRecommendationDto(ApiModel):
+    id: UUID
+    menu_name: Annotated[str, Field(min_length=1, max_length=80)]
+    ingredients: Annotated[list[MealIngredientDto], Field(min_length=1, max_length=200)]
+    seasonings: list[Annotated[str, Field(min_length=1, max_length=20)]]
+
+
+class RecipeDto(ApiModel):
+    steps: Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1, max_length=8)]
+
+
+class RecommendationRequest(ApiModel):
+    client_date: date
+    excluded_menu_name: Annotated[str | None, Field(min_length=1, max_length=80)] = None
+
+    @field_validator("excluded_menu_name")
+    @classmethod
+    def clean_excluded_menu_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.split())
+        if not cleaned:
+            raise ValueError("제외할 메뉴 이름은 비어 있을 수 없습니다.")
+        return cleaned
+
+
+class RecipeRequest(ApiModel):
+    recommendation: MealRecommendationDto
+
+
 class InternalInventoryItem(ApiModel):
     id: UUID
     name: Annotated[str, Field(min_length=1, max_length=80)]

@@ -156,9 +156,11 @@ def create_app(
 
     from app.routes.inventory import router as inventory_router
     from app.routes.recognition import router as recognition_router
+    from app.routes.recommendation import router as recommendation_router
 
     application.include_router(inventory_router)
     application.include_router(recognition_router)
+    application.include_router(recommendation_router)
     return application
 
 

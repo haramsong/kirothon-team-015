@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from app.constants import BASIC_SEASONINGS
 from app.errors import AppError
 from app.gateways.bedrock import (
     BedrockGateway,
@@ -17,9 +18,6 @@ from app.models import InventoryItemDto, RecognitionResultDto, StorageLocation
 
 MAX_IMAGE_BYTES = 3_932_160
 JPEG_CONTENT_TYPE = "image/jpeg"
-BASIC_SEASONINGS = frozenset(
-    {"소금", "설탕", "간장", "식용유", "후추", "참기름", "식초", "고춧가루"}
-)
 DEFAULT_SHELF_LIFE_DAYS = {
     StorageLocation.REFRIGERATED: 5,
     StorageLocation.FROZEN: 30,
