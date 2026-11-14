@@ -273,3 +273,39 @@ SAM artifact bucket은 `AES256` 서버 측 암호화, versioning `Enabled`, 네 
 | OIDC provider | `arn:aws:iam::462747820533:oidc-provider/token.actions.githubusercontent.com` |
 
 실제 재실행 전마다 `default` 프로파일과 `ap-northeast-2` 리전으로 계정을 확인했습니다. Stack, 역할, 공급자 또는 버킷 삭제, force 동작, IAM 권한 추가는 수행하지 않았습니다.
+
+## Task 6.2: Application Stack과 frontend 최초 실제 배포
+
+### 배포 대상 재검증
+
+| 항목 | 확인 결과 |
+| --- | --- |
+| AWS profile | `default` |
+| AWS account | `462747820533` 일치 |
+| AWS region | `ap-northeast-2` 일치 |
+| Git repository | `haramsong/my-own-fridge` 일치 |
+| Git branch | `main` 일치 |
+| 배포 시작 직전 revision | `ab1c43c9af19383d4327830db80d70058afc1043` |
+
+`aws sts get-caller-identity --profile default --region ap-northeast-2`, configured region, Git branch와 origin을 AWS 변경 전에 다시 검사했습니다. 배포 중 HEAD에 추가된 후속 commit은 문서와 스펙 파일만 변경했으며 배포한 애플리케이션 입력 파일은 바꾸지 않았습니다.
+
+### 실제 배포 결과
+
+검증된 `scripts/deployment/deploy-application.sh`를 실행해 Bootstrap Stack output의 SAM artifact bucket을 사용한 `sam build`와 `sam deploy`, Application Stack output 검증, API URL 주입 frontend production build, S3 sync, CloudFront invalidation을 순서대로 수행했습니다.
+
+| 항목 | 결과 |
+| --- | --- |
+| Application Stack | `my-own-fridge` |
+| Stack status | `CREATE_COMPLETE` |
+| Stack 생성 시각 | `2026-11-14T06:31:29.949000+00:00` |
+| ApiUrl | `https://wt6ej9b4a7.execute-api.ap-northeast-2.amazonaws.com` |
+| API health | `GET /api/health` 성공, status `ok` |
+| StaticBucketName | `my-own-fridge-staticbucket-zfaosmep1kz8` |
+| DistributionId | `E1I42HBY0SR8ZO` |
+| CloudFront URL | `https://d2pkazqqygwla0.cloudfront.net` |
+| CloudFront distribution status | `Deployed`, enabled |
+| CloudFront URL 응답 | HTTPS 요청 성공 |
+| Invalidation ID | `I6GUFBZ5S14LSNPPI5WBLCC84O` |
+| Invalidation path/status | `/*`, `Completed` |
+
+frontend build에는 stack output의 ApiUrl에서 마지막 `/`를 제거한 값을 `VITE_API_BASE_URL`로 주입했습니다. 생성된 `frontend/dist`를 stack output의 정적 버킷에 동기화한 뒤 같은 stack output의 배포 ID에 invalidation을 생성했습니다. 삭제 명령과 S3 `--delete`는 사용하지 않았습니다. 모든 로컬 AWS CLI와 SAM 명령에는 `--profile default --region ap-northeast-2`를 사용했으며 자격 증명이나 사용자 데이터는 기록하지 않았습니다.
