@@ -147,3 +147,29 @@
 | `sam build --profile default --region ap-northeast-2` | 통과 |
 
 실제 검증은 `./scripts/validate-ci.sh`로 수행했으며 종료 코드는 0이었습니다. SAM 명령은 로컬 빌드와 템플릿 검증만 수행했고 AWS 리소스를 생성하거나 변경하지 않았습니다.
+
+## Task 5.1: Application Stack 및 frontend 배포 스크립트
+
+### 구현 결과
+
+- `scripts/deployment/deploy-application.sh`는 승인된 Git branch·origin과 로컬 AWS 계정·리전을 먼저 검사한 뒤 Bootstrap Stack의 `SamArtifactBucketName` output을 조회하고 형식을 검증합니다.
+- 대상 검사와 Bootstrap output 검증 성공 후에만 SAM build와 `my-own-fridge` Application Stack deploy를 실행합니다.
+- Application Stack의 `ApiUrl`, `StaticBucketName`, `DistributionId`를 한 번의 output 조회 결과에서 파싱하며, 세 값이 모두 존재하고 형식 검증을 통과해야 frontend 배포를 시작합니다.
+- `ApiUrl`의 마지막 `/`를 제거해 `VITE_API_BASE_URL`로 주입하고 production build, stack output 대상 S3 sync, CloudFront `/*` invalidation을 순서대로 실행합니다.
+- S3 sync에 `--delete`를 사용하지 않으며, 각 단계가 실패하면 뒤따르는 배포 단계를 실행하지 않습니다.
+- `scripts/deployment/first-deploy.sh`는 대상 검사를 먼저 수행하고 Bootstrap 배포가 성공한 경우에만 Application Stack과 frontend 배포를 호출합니다. 인자를 받지 않으므로 force 또는 삭제 옵션을 전달할 수 없습니다.
+- 모든 로컬 AWS CLI와 SAM 명령은 `--profile default --region ap-northeast-2`를 명시합니다.
+
+### 검증 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| 두 배포 스크립트 `bash -n` 구문 검사 | 통과 |
+| 전체 배포 자동화 단위 테스트 | 49개 통과 |
+| 대상 불일치 시 stack·배포 호출 차단 | 통과 |
+| Bootstrap output, SAM build/deploy, Application output, frontend build, S3 sync 실패 시 후속 단계 차단 | 통과 |
+| ApiUrl 주입 및 stack output 기반 S3·CloudFront 대상 사용 | 통과 |
+| 모든 fake AWS CLI·SAM 호출의 profile/region 고정 | `default`, `ap-northeast-2` 일치 |
+| S3 `--delete`, stack/bucket 삭제 및 force 동작 부재 | 통과 |
+
+검증은 fake `aws`, `sam`, `npm`, `git` 실행 파일을 사용한 단위 테스트와 셸 구문 검사만 수행했습니다. 실제 CloudFormation/SAM 배포, S3 동기화 또는 CloudFront invalidation은 수행하지 않았으며, 구현한 스크립트의 실제 실행은 Task 6.2에서 수행합니다.
