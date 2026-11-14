@@ -122,3 +122,28 @@
 | `sam validate` 및 `sam build` | 통과 (`--profile default --region ap-northeast-2`) |
 
 검증 과정에서는 AWS 자격 증명을 설정하거나 AWS 리소스를 생성·변경하지 않습니다.
+
+## Task 3.2: 실행 가능한 로컬 CI 검증 스크립트
+
+### 구현 결과
+
+- `scripts/validate-ci.sh`에서 기존 `scripts/verify-all.sh`를 먼저 호출해 백엔드·프론트엔드 테스트, TypeScript 검사와 프로덕션 빌드를 비대화형으로 재사용합니다.
+- 애플리케이션 검증 성공 후 배포 자동화 스펙 테스트, SAM 템플릿 검증, SAM 애플리케이션 빌드를 각각 한 번씩 순서대로 실행합니다.
+- `set -Eeuo pipefail`과 직렬 단계 실행으로 선행 명령이 실패하면 해당 종료 코드를 유지한 채 즉시 중단하며 watcher 또는 개발 서버를 시작하지 않습니다.
+- SAM 검증과 빌드는 공통 배포 설정의 `default` 프로파일과 `ap-northeast-2` 리전을 명시합니다.
+
+### 실제 실행 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| 핵심 데모 종단 간 테스트 | 3개 통과 |
+| 핵심 백엔드 테스트 | 77개 통과 |
+| 핵심 프론트엔드 테스트 | 44개 통과 |
+| 선택 식단 백엔드 테스트 | 11개 통과 |
+| 선택 식단 프론트엔드 테스트 | 4개 통과 |
+| TypeScript 검사 및 프로덕션 빌드 | 통과 |
+| 배포 자동화 스펙 테스트 | 37개 통과 |
+| `sam validate --profile default --region ap-northeast-2` | 통과 |
+| `sam build --profile default --region ap-northeast-2` | 통과 |
+
+실제 검증은 `./scripts/validate-ci.sh`로 수행했으며 종료 코드는 0이었습니다. SAM 명령은 로컬 빌드와 템플릿 검증만 수행했고 AWS 리소스를 생성하거나 변경하지 않았습니다.
