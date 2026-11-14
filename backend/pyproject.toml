@@ -1,0 +1,23 @@
+[project]
+name = "my-own-fridge-backend"
+version = "0.1.0"
+description = "나만의 냉장고 FastAPI Lambda 백엔드"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "boto3>=1.38,<2",
+  "fastapi==0.115.12",
+  "mangum==0.19.0",
+  "pydantic==2.11.4",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx==0.28.1",
+  "hypothesis==6.131.9",
+  "pytest==8.3.5",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["."]
+testpaths = ["tests"]

@@ -2,3 +2,19 @@
 .env
 .env.*
 !.env.example
+
+# 프론트엔드 산출물
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
+# Python 산출물
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hypothesis/
+.venv/
+
+# AWS SAM 산출물
+.aws-sam/
