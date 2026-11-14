@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 
@@ -8,8 +9,15 @@ import { useInventory } from './InventoryProvider'
 
 vi.mock('./InventoryProvider', () => ({ useInventory: vi.fn() }))
 
+const showToast = vi.fn()
+vi.mock('../toast/ToastProvider', () => ({
+  useToast: () => ({ showToast }),
+}))
+
 const mockedUseInventory = vi.mocked(useInventory)
 const refreshInventory = vi.fn().mockResolvedValue(undefined)
+const updateInventoryItem = vi.fn().mockResolvedValue(undefined)
+const deleteInventoryItem = vi.fn().mockResolvedValue(undefined)
 
 function inventory(items: InventoryDto['items']): InventoryDto {
   return { version: 1, items }
@@ -26,6 +34,9 @@ function renderPage() {
 describe('InventoryPage', () => {
   beforeEach(() => {
     refreshInventory.mockClear()
+    updateInventoryItem.mockReset().mockResolvedValue(undefined)
+    deleteInventoryItem.mockReset().mockResolvedValue(undefined)
+    showToast.mockClear()
   })
 
   it('재고를 소비기한 순으로 표시하고 상태 배지를 표시한다', () => {
@@ -62,6 +73,8 @@ describe('InventoryPage', () => {
       today: '2026-04-07',
       refreshInventory,
       replaceInventory: vi.fn(),
+      updateInventoryItem,
+      deleteInventoryItem,
     })
 
     renderPage()
@@ -89,6 +102,8 @@ describe('InventoryPage', () => {
       today: '2026-04-07',
       refreshInventory,
       replaceInventory: vi.fn(),
+      updateInventoryItem,
+      deleteInventoryItem,
     })
 
     renderPage()
@@ -123,6 +138,8 @@ describe('InventoryPage', () => {
       today: '2026-04-07',
       refreshInventory,
       replaceInventory: vi.fn(),
+      updateInventoryItem,
+      deleteInventoryItem,
     })
 
     renderPage()
@@ -141,6 +158,8 @@ describe('InventoryPage', () => {
       today: '2026-04-07',
       refreshInventory,
       replaceInventory: vi.fn(),
+      updateInventoryItem,
+      deleteInventoryItem,
     })
 
     renderPage()
@@ -150,5 +169,43 @@ describe('InventoryPage', () => {
       'w-full',
       'md:max-w-[480px]',
     )
+  })
+
+  it('재고 카드에서 편집 모달을 열고 수정값을 InventoryProvider에 전달한다', async () => {
+    const user = userEvent.setup()
+    mockedUseInventory.mockReturnValue({
+      inventory: inventory([
+        {
+          id: 'onion',
+          name: '양파',
+          quantity: 8,
+          storageLocation: '실온',
+          expirationDate: '2026-04-10',
+          expirationEstimated: true,
+        },
+      ]),
+      lastSuccessfulInventory: null,
+      status: 'success',
+      errorMessage: null,
+      today: '2026-04-07',
+      refreshInventory,
+      replaceInventory: vi.fn(),
+      updateInventoryItem,
+      deleteInventoryItem,
+    })
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: '양파 수정' }))
+
+    const nameInput = screen.getByLabelText('품목명')
+    await user.clear(nameInput)
+    await user.type(nameInput, '적양파')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(updateInventoryItem).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'onion', name: '적양파' }),
+    )
+    expect(showToast).toHaveBeenCalledWith('적양파을(를) 수정했어요.')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

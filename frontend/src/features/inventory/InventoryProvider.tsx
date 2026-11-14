@@ -70,6 +70,46 @@ export function InventoryProvider({ children }: PropsWithChildren) {
     void refreshInventory()
   }, [refreshInventory])
 
+  const updateInventoryItem = useCallback(
+    async (item: InventoryItemDto) => {
+      if (!lastSuccessfulInventory) {
+        throw new ApiError(409, 'INVENTORY_NOT_LOADED', '냉장고를 다시 불러와 주세요.', true)
+      }
+
+      const nextInventory = await apiClient.put<InventoryDto>(
+        `/api/inventory/items/${encodeURIComponent(item.id)}?today=${encodeURIComponent(today)}`,
+        {
+          expectedVersion: lastSuccessfulInventory.version,
+          name: item.name,
+          quantity: item.quantity,
+          storageLocation: item.storageLocation,
+          expirationDate: item.expirationDate,
+          expirationEstimated: item.expirationEstimated,
+        },
+      )
+      replaceInventory(nextInventory)
+    },
+    [apiClient, lastSuccessfulInventory, replaceInventory, today],
+  )
+
+  const deleteInventoryItem = useCallback(
+    async (itemId: string) => {
+      if (!lastSuccessfulInventory) {
+        throw new ApiError(409, 'INVENTORY_NOT_LOADED', '냉장고를 다시 불러와 주세요.', true)
+      }
+
+      const query = new URLSearchParams({
+        today,
+        expectedVersion: String(lastSuccessfulInventory.version),
+      })
+      const nextInventory = await apiClient.delete<InventoryDto>(
+        `/api/inventory/items/${encodeURIComponent(itemId)}?${query.toString()}`,
+      )
+      replaceInventory(nextInventory)
+    },
+    [apiClient, lastSuccessfulInventory, replaceInventory, today],
+  )
+
   const value = useMemo<InventoryContextValue>(
     () => ({
       inventory,
@@ -79,8 +119,11 @@ export function InventoryProvider({ children }: PropsWithChildren) {
       today,
       refreshInventory,
       replaceInventory,
+      updateInventoryItem,
+      deleteInventoryItem,
     }),
     [
+      deleteInventoryItem,
       errorMessage,
       inventory,
       lastSuccessfulInventory,
@@ -88,6 +131,7 @@ export function InventoryProvider({ children }: PropsWithChildren) {
       replaceInventory,
       status,
       today,
+      updateInventoryItem,
     ],
   )
 

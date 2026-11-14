@@ -1,10 +1,21 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { getExpirationDisplay, sortInventoryItems } from '../../logic/date'
 import type { InventoryItemDto } from '../../models/types'
+import { useToast } from '../toast/ToastProvider'
+import { ItemModal } from './ItemModal'
 import { useInventory } from './InventoryProvider'
 
-function InventoryCard({ item, today }: { item: InventoryItemDto; today: string }) {
+function InventoryCard({
+  item,
+  today,
+  onEdit,
+}: {
+  item: InventoryItemDto
+  today: string
+  onEdit: () => void
+}) {
   const expiration = getExpirationDisplay(item.expirationDate, today)
 
   return (
@@ -43,14 +54,32 @@ function InventoryCard({ item, today }: { item: InventoryItemDto; today: string 
             지남
           </span>
         )}
+        <button
+          aria-label={`${item.name} 수정`}
+          className="ml-auto rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-bold text-stone-700 hover:bg-stone-100"
+          onClick={onEdit}
+          type="button"
+        >
+          수정
+        </button>
       </div>
     </li>
   )
 }
 
 export function InventoryPage() {
-  const { inventory, lastSuccessfulInventory, status, errorMessage, today, refreshInventory } =
-    useInventory()
+  const {
+    inventory,
+    lastSuccessfulInventory,
+    status,
+    errorMessage,
+    today,
+    refreshInventory,
+    updateInventoryItem,
+    deleteInventoryItem,
+  } = useInventory()
+  const { showToast } = useToast()
+  const [editingItem, setEditingItem] = useState<InventoryItemDto | null>(null)
   const displayedInventory = inventory ?? lastSuccessfulInventory
   const items = displayedInventory
     ? sortInventoryItems(displayedInventory.items, today)
@@ -112,7 +141,12 @@ export function InventoryPage() {
         {hasItems && (
           <ul className="mt-6 space-y-3" aria-label="냉장고 재고 목록">
             {items.map((item) => (
-              <InventoryCard item={item} key={item.id} today={today} />
+              <InventoryCard
+                item={item}
+                key={item.id}
+                onEdit={() => setEditingItem(item)}
+                today={today}
+              />
             ))}
           </ul>
         )}
@@ -144,6 +178,29 @@ export function InventoryPage() {
           </Link>
         </nav>
       </section>
+
+      {editingItem && (
+        <ItemModal
+          item={editingItem}
+          key={editingItem.id}
+          mode="inventory"
+          onClose={() => setEditingItem(null)}
+          onDelete={async () => {
+            await deleteInventoryItem(editingItem.id)
+            setEditingItem(null)
+            showToast(`${editingItem.name}을(를) 삭제했어요.`)
+          }}
+          onSave={async (item) => {
+            await updateInventoryItem(item)
+            setEditingItem(null)
+            showToast(
+              item.quantity === 0
+                ? `${editingItem.name}을(를) 삭제했어요.`
+                : `${item.name}을(를) 수정했어요.`,
+            )
+          }}
+        />
+      )}
     </main>
   )
 }
