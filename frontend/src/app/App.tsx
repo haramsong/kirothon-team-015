@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 
 import { InventoryPage } from '../features/inventory/InventoryPage'
 import { InventoryProvider } from '../features/inventory/InventoryProvider'
+import { RegistrationPage } from '../features/registration/RegistrationPage'
 import { ToastProvider } from '../features/toast/ToastProvider'
 
 interface PlaceholderPageProps {
@@ -27,15 +28,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<InventoryPage />} path="/" />
-      <Route
-        element={
-          <PlaceholderPage
-            description="영수증 사진 또는 주문내역 캡처로 재료를 등록할 수 있습니다."
-            title="재료 등록"
-          />
-        }
-        path="/register"
-      />
+      <Route element={<RegistrationPage />} path="/register" />
       <Route
         element={
           <PlaceholderPage
