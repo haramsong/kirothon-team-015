@@ -410,3 +410,76 @@ frontend build에는 stack output의 ApiUrl에서 마지막 `/`를 제거한 값
 - 로컬 배포 스크립트, 로컬 CI 스크립트와 runbook에서 추출한 AWS CLI·SAM 명령 38개는 모두 `default` 프로파일과 `ap-northeast-2` 리전을 명시합니다. GitHub Actions는 로컬 프로파일 대신 OIDC 단기 환경 자격 증명을 사용합니다.
 
 모든 체크포인트 조건을 충족했고 후속 확인이 필요한 질문은 없습니다. Task 4 결론은 **통과**입니다.
+
+## Task 9: Final checkpoint
+
+최종 체크포인트의 사전 검증 시각은 `2026-11-14T07:11:36Z`이며, 기준 revision은 `60b6f8d5477aff97f19c316c225f227858f7d8d5`입니다. Git branch `main`, origin `https://github.com/haramsong/my-own-fridge.git`, 로컬 AWS 프로파일 `default`, 리전 `ap-northeast-2`, STS 계정 `462747820533`이 승인 대상과 일치함을 먼저 확인했습니다.
+
+### 로컬 자동 검증
+
+`./scripts/validate-ci.sh`와 Bootstrap 템플릿 검증을 최종 실행했습니다.
+
+| 검사 | 결과 |
+| --- | --- |
+| 핵심 데모 종단 간 테스트 | 3개 통과 |
+| 핵심 백엔드 테스트 | 77개 통과 |
+| 선택 식단 백엔드 테스트 | 11개 통과 |
+| 핵심 프론트엔드 테스트 | 44개 통과 |
+| 선택 식단 프론트엔드 테스트 | 4개 통과 |
+| 배포 자동화 테스트 | 63개 통과 |
+| TypeScript 검사 | 통과 |
+| 프론트엔드 production build | 통과 |
+| Application SAM template validate/build | 통과 |
+| Bootstrap SAM lint 및 CloudFormation template validation | 통과 |
+| `git diff --check` | 통과 |
+
+백엔드 테스트는 총 91개, 프론트엔드 테스트는 총 48개가 통과했습니다. 남은 비차단 경고는 Starlette `TestClient`가 사용하는 `anyio.abc.BlockingPortal` 별칭의 향후 제거를 알리는 `DeprecationWarning` 1종입니다.
+
+### AWS 읽기 검증
+
+모든 로컬 AWS CLI와 SAM 명령에 `--profile default --region ap-northeast-2`를 명시했습니다.
+
+| 항목 | 최종 확인 결과 |
+| --- | --- |
+| STS account | `462747820533` |
+| Bootstrap Stack | `my-own-fridge-github-oidc`, `UPDATE_COMPLETE` |
+| GitHub deployment role | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
+| OIDC provider | `token.actions.githubusercontent.com`, client ID `sts.amazonaws.com` |
+| OIDC trust subject | `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main` 정확 일치 |
+| SAM artifact bucket | `my-own-fridge-github-oidc-samartifactbucket-vctylgw6itbg` |
+| Application Stack | `my-own-fridge`, `CREATE_COMPLETE` |
+| ApiUrl | `https://wt6ej9b4a7.execute-api.ap-northeast-2.amazonaws.com` |
+| API health | `GET /api/health`, `status=ok` |
+| StaticBucketName | `my-own-fridge-staticbucket-zfaosmep1kz8` |
+| S3 `index.html` | 454 bytes, `2026-11-14T07:09:14Z` 갱신 |
+| DistributionId | `E1I42HBY0SR8ZO` |
+| CloudFront | `Deployed`, enabled, HTTPS 응답 성공 |
+| 최신 invalidation | `I8QJNSXR1GHXXSGJPR2519ZFPH`, `Completed` |
+| 서비스 URL | `https://d2pkazqqygwla0.cloudfront.net` |
+
+### GitHub 및 자동 CD 기준선
+
+Repository Variables에는 승인된 네 항목만 존재하고 값이 Bootstrap/Application 설정과 일치했습니다.
+
+- `AWS_ROLE_ARN=arn:aws:iam::462747820533:role/my-own-fridge-github-deploy`
+- `AWS_REGION=ap-northeast-2`
+- `SAM_STACK_NAME=my-own-fridge`
+- `SAM_ARTIFACT_BUCKET=my-own-fridge-github-oidc-samartifactbucket-vctylgw6itbg`
+
+최종 체크포인트 커밋 직전의 최신 `main` 자동 CD는 [run 43569591817](https://github.com/haramsong/my-own-fridge/actions/runs/43569591817)이며 `push` event, `success`, head SHA `60b6f8d5477aff97f19c316c225f227858f7d8d5`로 `origin/main`과 일치했습니다. 대상·변수 검사, OIDC 수임, STS 검사, 전체 CI, SAM 배포, output gate, API URL 주입 build, S3 sync와 CloudFront invalidation 단계가 모두 성공했습니다. 이 문서를 포함하는 최종 체크포인트 push의 자동 CD 결과는 해당 push 완료 후 별도 최종 실행 결과로 확인합니다.
+
+### 요구사항·설계·구현 대조
+
+| 범위 | 확인 결과 |
+| --- | --- |
+| 승인 대상과 변경 전 guard | 공통 고정값, 로컬·workflow 계정/리전/repository/ref 검사와 자동화 테스트 일치 |
+| OIDC Bootstrap | 별도 Stack, immutable subject/audience 정확 일치, 장기 key 없음, 실제 Stack·IAM 값 일치 |
+| CI | PR/main push/manual trigger, Python 3.13, Node 22, 전체 검증, `contents: read` 일치 |
+| CD | main push/manual trigger, 최소 권한, 직렬 배포, fail-fast output gate와 실제 성공 단계 일치 |
+| 최초 배포와 GitHub 설정 | 실제 Stack outputs, 네 Repository Variables, S3·CloudFront 대상이 문서와 일치 |
+| 운영과 롤백 | runbook의 `git revert`, 상태 확인, `UPDATE_ROLLBACK_FAILED` 승인 경계와 Bootstrap 제외 범위 확인 |
+| Git 안전 경계 | `main`/origin 검사, 제한 staging, 일반 push, force/hook 우회 금지 구현 확인 |
+
+`requirements.md`, `design.md`, `tasks.md`, `.config.kiro`는 모두 Git 추적 파일입니다. `requirements.md`, `design.md`, `.config.kiro`에는 미반영 변경이 없었고, 이전 완료 상태가 반영된 `tasks.md`는 이 체크포인트 커밋에 포함합니다. 런타임 실행 이력인 `tasks.meta.json`은 제외합니다. 스펙과 최종 기록에서 실제 AWS 장기 access key 형식이나 credential file 설정을 찾지 못했고, `.aws-sam/build`와 `frontend/dist` 생성물은 커밋 대상에 포함하지 않습니다.
+
+선택 사항으로 표시된 property/static test sub-task는 구현 계획의 MVP 선택 항목으로 남아 있습니다. 현재 필수 구현, 기존 자동화 테스트, 실제 AWS·GitHub 배포 검증에는 실패가 없으므로 최종 체크포인트 결론은 **통과**입니다.

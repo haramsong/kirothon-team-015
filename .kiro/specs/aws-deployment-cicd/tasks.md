@@ -66,7 +66,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - local validator가 모든 필수 명령을 순서대로 호출하고 실패 exit code를 보존하는지 mock으로 검사한다.
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.7, 3.8, 3.9, 3.10_
 
-- [~] 4. Checkpoint - CI와 OIDC 정적 검증을 완료한다
+- [x] 4. Checkpoint - CI와 OIDC 정적 검증을 완료한다
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 5. CD 배포 로직을 구현한다
@@ -99,7 +99,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - 임의 최초 실패 위치를 100개 이상 생성해 실행 trace 순서와 실패 후 CloudFormation, SAM, S3, CloudFront 변경 호출 0회를 검사한다.
     - **Validates: Requirements 2.8, 2.9, 4.13, 5.1, 5.3**
 
-- [ ] 6. 최초 실제 AWS 배포를 수행하고 기록한다
+- [x] 6. 최초 실제 AWS 배포를 수행하고 기록한다
   - [x] 6.1 승인된 AWS 계정에서 OIDC Bootstrap Stack을 실제 배포한다
     - 먼저 `aws sts get-caller-identity --profile default --region ap-northeast-2` 결과가 `462747820533`인지 확인한다.
     - git remote와 branch 확인 후 bootstrap script를 실행하고 `my-own-fridge-github-oidc` stack, role ARN, artifact bucket, trust policy를 확인한다.
@@ -107,7 +107,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - 비밀값을 제외한 검증 결과를 `docs/aws-deployment-validation.md`에 기록한다.
     - _Requirements: 1.2, 1.3, 2.8, 2.9, 2.10, 5.1_
 
-  - [-] 6.2 Application Stack과 frontend를 최초 실제 배포한다
+  - [x] 6.2 Application Stack과 frontend를 최초 실제 배포한다
     - `first-deploy.sh` 또는 검증된 개별 script로 `my-own-fridge` SAM stack을 배포하고 세 stack output을 확인한다.
     - ApiUrl을 주입해 frontend를 build하고 stack output의 StaticBucketName에 sync한 뒤 DistributionId를 invalidation한다.
     - 삭제 명령과 S3 `--delete`를 사용하지 않고 배포 revision 및 non-secret output 검증 결과를 validation 문서에 기록한다.
@@ -118,8 +118,8 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - 기기 ID 또는 재고 내용 같은 사용자 데이터와 자격 증명을 로그나 문서에 기록하지 않는다.
     - _Requirements: 2.10, 4.7, 4.8, 4.11, 4.12_
 
-- [ ] 7. GitHub repository 설정과 수동 CD 검증을 구현한다
-  - [~] 7.1 GitHub variables 및 workflow dispatch 스크립트를 작성한다
+- [x] 7. GitHub repository 설정과 수동 CD 검증을 구현한다
+  - [x] 7.1 GitHub variables 및 workflow dispatch 스크립트를 작성한다
     - `scripts/deployment/configure-github.sh`에서 `gh auth status`와 target을 확인하고 네 repository variable을 allowlist 방식으로 설정·조회한다.
     - `scripts/deployment/dispatch-cd.sh`에서 `cd.yml`, repository, `main` ref를 명시해 실행하고 run conclusion과 head SHA를 검증한다.
     - `gh`가 없거나 인증되지 않으면 변경 전 실패하고 동일한 수동 명령을 표시하며 AWS key 이름은 입력으로 받지 않는다.
@@ -130,15 +130,15 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - 승인된 네 변수 외 설정 호출과 실패 이후 후속 GitHub 변경 호출이 없는지 확인한다.
     - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12_
 
-  - [~] 7.3 Repository variables를 실제 설정하고 workflow_dispatch를 검증한다
+  - [x] 7.3 Repository variables를 실제 설정하고 workflow_dispatch를 검증한다
     - 가능하면 `gh variable set/list`, `gh workflow run`, `gh run watch/view`를 사용해 `haramsong/my-own-fridge`의 네 변수를 설정하고 CD를 `main`에서 실행한다.
     - run conclusion이 success이고 head SHA가 dispatch 직전 `origin/main` SHA와 같은지 확인한다.
     - 실제 stack outputs, ApiUrl build, S3 sync와 invalidation 완료를 확인하고 non-secret 결과를 validation 문서에 추가한다.
     - `gh`를 사용할 수 없으면 저장소를 변경하지 않고 수동 명령과 미완료 상태를 기록한다.
     - _Requirements: 4.2, 4.4, 4.5, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12_
 
-- [ ] 8. 운영·롤백 문서와 문서 검증을 완성한다
-  - [~] 8.1 AWS 배포 운영·롤백 runbook을 작성한다
+- [x] 8. 운영·롤백 문서와 문서 검증을 완성한다
+  - [x] 8.1 AWS 배포 운영·롤백 runbook을 작성한다
     - `docs/aws-deployment-runbook.md`에 사전 점검, OIDC bootstrap, 최초 배포, repository variables, 자동·수동 CD, 실패 진단을 작성한다.
     - 이전 검증 revision의 `git revert`와 `workflow_dispatch` 재배포, stack/API/S3/CloudFront 확인, `UPDATE_ROLLBACK_FAILED` 수동 승인 경계를 설명한다.
     - 일반 rollback에서 Bootstrap Stack, IAM role, OIDC provider 삭제를 제외하고 모든 로컬 AWS/SAM 예시에 `default` profile과 region을 포함한다.
@@ -155,7 +155,7 @@ GitHub OIDC 부트스트랩부터 CI, CD, 최초 실제 배포, GitHub repositor
     - workflow, template, scripts, docs에서 장기 AWS access key 값과 금지 credential file write pattern을 검사한다.
     - _Requirements: 2.12, 4.16, 5.8, 6.1, 6.2, 6.3, 6.4, 6.5, 6.7, 6.8_
 
-- [~] 9. Final checkpoint - 전체 자동 검증과 배포 기록을 확인한다
+- [-] 9. Final checkpoint - 전체 자동 검증과 배포 기록을 확인한다
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
