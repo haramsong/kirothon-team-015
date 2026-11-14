@@ -75,3 +75,26 @@
 | SAM lint 검증 | `sam validate --lint --template-file infra/github-oidc-bootstrap.yaml --profile default --region ap-northeast-2` | 통과 |
 
 검증에서는 STS와 CloudFormation의 읽기 전용 API만 호출했으며 stack, IAM 역할, OIDC 공급자 또는 S3 버킷을 생성하거나 변경하지 않았습니다. 모든 로컬 AWS와 SAM 명령은 `default` 프로파일과 `ap-northeast-2` 리전을 명시했습니다.
+## Task 2.2: OIDC Bootstrap 실행 스크립트
+
+### 구현 결과
+
+- `scripts/deployment/bootstrap-oidc.sh`는 Git branch와 origin을 먼저 검사한 뒤 `aws sts get-caller-identity --profile default --region ap-northeast-2`와 configured region으로 승인 계정을 확인합니다.
+- IAM의 OIDC 공급자를 읽기 전용으로 조회하여 `token.actions.githubusercontent.com` 공급자가 없으면 새 공급자를 생성하도록 빈 parameter를 전달하고, 하나면 승인 계정 ARN만 재사용합니다. 둘 이상이거나 ARN 형식이 다르면 template 검증과 stack 배포 전에 중단합니다.
+- 대상 및 공급자 검사를 통과한 경우에만 CloudFormation template 검증, `my-own-fridge-github-oidc` stack 배포, stack waiter, output 조회를 순서대로 실행합니다.
+- `GitHubDeploymentRoleArn`은 승인 계정과 역할 이름을, `SamArtifactBucketName`은 S3 bucket 이름 형식을 검증한 뒤 비밀이 아닌 두 output만 JSON으로 출력합니다.
+- 모든 AWS CLI 호출에 `--profile default --region ap-northeast-2`를 명시했으며, 장기 AWS access key 또는 credential file을 사용하지 않습니다.
+
+### 검증 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| `bash -n scripts/deployment/bootstrap-oidc.sh` | 통과 |
+| 기존 대상 검사 및 bootstrap 단위 테스트 | 13개 통과 |
+| 잘못된 AWS account 뒤 후속 호출 차단 | 통과 |
+| OIDC 공급자 중복 뒤 template/deploy 차단 | 통과 |
+| template 검증 실패 뒤 stack 조회/deploy 차단 | 통과 |
+| deploy 또는 waiter 실패 뒤 output 조회 차단 | 통과 |
+| 모든 fake AWS 호출의 profile/region 고정 검사 | `default`, `ap-northeast-2` 일치 |
+
+이 Task에서는 fake `aws`·`git` 실행 파일을 사용한 단위 테스트와 셸 구문 검사만 수행했습니다. 실제 AWS API 호출, CloudFormation stack 배포, IAM 역할·OIDC 공급자 생성 및 S3 bucket 생성은 수행하지 않았으며 Task 6.1에서 승인 대상을 다시 확인한 후 실행합니다.
