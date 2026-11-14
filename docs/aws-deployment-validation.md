@@ -337,3 +337,43 @@ frontend build에는 stack output의 ApiUrl에서 마지막 `/`를 제거한 값
 | `git diff --check` | 통과 |
 
 이 Task에서는 fake `aws`, `git`, `gh` 실행 파일만 사용해 테스트했습니다. 실제 GitHub repository variable을 설정하거나 workflow를 dispatch하지 않았으며, Task 7.3에서 대상과 인증을 다시 확인한 뒤 스크립트를 실행합니다.
+
+## Task 7.3: Repository Variables 설정과 workflow_dispatch 실제 검증
+
+### 대상과 Repository Variables 확인
+
+- 로컬 AWS 조회는 `default` 프로파일과 `ap-northeast-2` 리전을 사용했으며 STS account `462747820533`을 확인했습니다.
+- Git branch는 `main`, origin은 `https://github.com/haramsong/my-own-fridge.git`, GitHub CLI 인증 계정은 `haramsong`으로 확인했습니다.
+- `scripts/deployment/configure-github.sh`로 `AWS_ROLE_ARN`, `AWS_REGION`, `SAM_STACK_NAME`, `SAM_ARTIFACT_BUCKET` 네 Repository Variables를 설정했습니다.
+- `gh variable list` 결과에서 role ARN, `ap-northeast-2`, `my-own-fridge`, Bootstrap Stack의 artifact bucket 값이 각각 일치함을 확인했습니다.
+- AWS access key, secret access key 또는 장기 자격 증명은 GitHub 설정에 추가하지 않았습니다.
+
+### 최초 dispatch 실패와 수정
+
+최초 수동 실행 [run 43567963395](https://github.com/haramsong/my-own-fridge/actions/runs/43567963395)은 revision `0549b2a29e6330c821e03a2b82f90d39e672dc5a`에서 OIDC 역할 수임이 거부되어 실패했습니다. GitHub OIDC 설정 API를 조회한 결과 이 저장소는 immutable subject를 사용하며 prefix가 `repo:haramsong@61612250/my-own-fridge@1457328764`인 반면, IAM trust policy는 이전 이름 기반 subject를 요구하고 있었습니다. GitHub 문서의 [immutable subject 형식](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims)에 따라 branch까지 포함한 다음 정확 일치 조건으로 변경했습니다.
+
+`repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main`
+
+추가로 `aws-actions/configure-aws-credentials@v4`가 지원하지 않아 경고를 발생시킨 `allowed-account-ids` 입력을 제거했습니다. Workflow는 수임 전 고정 role ARN 검사와 수임 직후 STS account 정확 일치 검사를 계속 수행합니다. 수정은 Bootstrap Stack에 적용한 뒤 배포 자동화 테스트 63개와 CloudFormation template 검증을 통과했습니다.
+
+| 수정 commit | push | Bootstrap Stack | 실제 trust 확인 |
+| --- | --- | --- | --- |
+| `67b467dc99a14db2b2109a901bb17d792b3d6b79` (`fix: trust GitHub immutable OIDC subject`) | `origin/main` 성공 | `UPDATE_COMPLETE` | immutable subject와 audience `sts.amazonaws.com` 정확 일치 |
+
+### 성공한 workflow_dispatch와 배포 검증
+
+수정 revision을 대상으로 실행한 [run 43568447277](https://github.com/haramsong/my-own-fridge/actions/runs/43568447277)은 `success`로 완료됐고 head SHA는 요청한 `67b467dc99a14db2b2109a901bb17d792b3d6b79`와 일치했습니다. OIDC 수임, STS account/region 검사, 전체 테스트, SAM build/deploy, output 검사, ApiUrl 주입 build, S3 sync와 CloudFront invalidation 단계가 모두 성공했습니다.
+
+| 항목 | 실제 확인 결과 |
+| --- | --- |
+| Application Stack | `my-own-fridge`, `CREATE_COMPLETE` |
+| ApiUrl | `https://wt6ej9b4a7.execute-api.ap-northeast-2.amazonaws.com` |
+| API health | `GET /api/health` 응답의 status `ok` |
+| StaticBucketName | `my-own-fridge-staticbucket-zfaosmep1kz8` |
+| S3 `index.html` | 2026-11-14 06:55:35 UTC 갱신, 454 bytes |
+| ApiUrl 주입 산출물 | CloudFront asset `assets/index-Bg8zH07K.js`에서 stack ApiUrl 확인 |
+| DistributionId | `E1I42HBY0SR8ZO`, status `Deployed`, enabled |
+| CloudFront URL | `https://d2pkazqqygwla0.cloudfront.net` |
+| Invalidation | `I7S5Y7G3BHIJJMCJW3AHCKKG4X`, `/*`, `Completed` |
+
+검증 기록에는 자격 증명, OIDC token 또는 사용자 데이터가 포함되지 않습니다.
