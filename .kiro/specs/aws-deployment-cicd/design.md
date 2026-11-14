@@ -24,7 +24,7 @@
 | Deployment branch/ref | `main` / `refs/heads/main` |
 | Bootstrap stack | `my-own-fridge-github-oidc` |
 | Application stack | `my-own-fridge` |
-| OIDC subject | `repo:haramsong/my-own-fridge:ref:refs/heads/main` |
+| OIDC subject | `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main` |
 
 GitHub workflow의 AWS 명령은 OIDC action이 제공한 단기 환경 자격 증명을 사용합니다. `default` 프로파일은 로컬 STS, CloudFormation, SAM 명령에만 강제합니다. GitHub runner에 장기 키나 자격 증명 파일을 만들지 않습니다.
 
@@ -116,7 +116,7 @@ Trust policy 핵심은 다음과 같습니다.
 Condition:
   StringEquals:
     token.actions.githubusercontent.com:aud: sts.amazonaws.com
-    token.actions.githubusercontent.com:sub: repo:haramsong/my-own-fridge:ref:refs/heads/main
+    token.actions.githubusercontent.com:sub: repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main
 ```
 
 배포 역할의 session duration은 1시간입니다. policy는 다음 범주로 분리하고 `Resource: "*"`가 불가피한 action을 test allowlist에 명시합니다.
@@ -258,7 +258,7 @@ sequenceDiagram
 CD 명령 규칙:
 
 - OIDC 수임 전에는 AWS 변경 명령이 없습니다.
-- `aws-actions/configure-aws-credentials`에는 `role-to-assume`, `aws-region`, `allowed-account-ids: 462747820533`를 지정합니다.
+- `aws-actions/configure-aws-credentials`에는 `role-to-assume`, `aws-region`, `role-session-name`을 지정합니다. 역할 ARN을 승인된 계정의 고정값으로 검사한 뒤 수임하고, 다음 단계에서 STS account가 `462747820533`인지 다시 확인합니다.
 - runner에서는 OIDC 단기 환경 자격 증명을 사용하고 credential file을 생성하지 않습니다.
 - `sam deploy`는 `--s3-bucket "$SAM_ARTIFACT_BUCKET"`, `--capabilities CAPABILITY_IAM`, `--no-confirm-changeset`, `--no-fail-on-empty-changeset`, `--stack-name`, `--region`을 명시합니다.
 - output은 한 번의 `describe-stacks` JSON 응답을 `jq -er`로 key별 추출합니다.

@@ -61,7 +61,7 @@
 2. THE Bootstrap_Template SHALL GitHub_OIDC_Provider의 URL을 `https://token.actions.githubusercontent.com`으로, client ID를 `sts.amazonaws.com`으로 정의한다.
 3. THE GitHub_Deployment_Role SHALL `sts:AssumeRoleWithWebIdentity` 신뢰 주체를 GitHub_OIDC_Provider로 제한한다.
 4. THE GitHub_Deployment_Role SHALL OIDC audience 조건을 `sts.amazonaws.com`과 정확히 일치시킨다.
-5. THE GitHub_Deployment_Role SHALL OIDC subject 조건을 `repo:haramsong/my-own-fridge:ref:refs/heads/main`과 정확히 일치시킨다.
+5. THE GitHub_Deployment_Role SHALL OIDC subject 조건을 GitHub가 Source_Repository에 부여한 immutable owner·repository ID와 Deployment_Branch를 포함하는 `repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main`과 정확히 일치시킨다.
 6. THE GitHub_Deployment_Role SHALL Application_Stack 배포, Lambda 아티팩트 업로드, 프론트엔드 업로드 및 CloudFront 무효화에 필요한 작업으로 권한을 제한한다.
 7. THE Bootstrap_Template SHALL GitHub_Deployment_Role의 Role_ARN과 SAM 패키지 전용 버킷의 ArtifactBucketName을 stack output으로 제공한다.
 8. WHEN Bootstrap_Script가 실행되면, THE Bootstrap_Script SHALL Deployment_Identity_Check를 통과한 뒤 Bootstrap_Template 검증과 Bootstrap_Stack 배포를 순서대로 수행한다.

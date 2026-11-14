@@ -75,7 +75,6 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          allowed-account-ids: '462747820533'
           role-session-name: my-own-fridge-github-deploy
 
       - name: AWS 계정과 리전 검사

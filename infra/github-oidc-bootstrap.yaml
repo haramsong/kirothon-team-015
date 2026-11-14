@@ -95,7 +95,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:haramsong/my-own-fridge:ref:refs/heads/main
+                token.actions.githubusercontent.com:sub: repo:haramsong@61612250/my-own-fridge@1457328764:ref:refs/heads/main
       Policies:
         - PolicyName: my-own-fridge-github-deployment
           PolicyDocument:
