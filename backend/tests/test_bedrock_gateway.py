@@ -144,6 +144,8 @@ def test_emit_recommendation_forces_its_strict_tool_and_inventory_prompt() -> No
     prompt = call["messages"][0]["content"][0]["text"]
     assert "item-1" in prompt
     assert "양파국" in prompt
+    assert "품목은 ingredients에 넣으세요" in prompt
+    assert "재료 이름을 앞에 덧붙이거나" in prompt
 
 
 def test_emit_recipe_forces_separate_strict_tool() -> None:
@@ -229,6 +231,8 @@ def test_emit_meal_plan_forces_strict_six_meal_tool() -> None:
     }
     prompt = call["messages"][0]["content"][0]["text"]
     assert "정확히 6개 끼니" in prompt
+    assert "재료 이름을 앞에 덧붙이거나" in prompt
+    assert "서로 겹치지 않게" in prompt
     assert "각 끼니 직전" in prompt
     assert "2026-04-10" in prompt
 

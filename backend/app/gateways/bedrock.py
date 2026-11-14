@@ -16,6 +16,14 @@ MEAL_PLAN_TOOL_NAME = "emit_meal_plan"
 
 logger = logging.getLogger(__name__)
 
+# "반드시 포함"을 메뉴 이름에 재료명을 붙이라는 뜻으로 받아들여 "계란 계란말이" 같은 이름이 나오지 않게 한다.
+# 재고 목록 뒤, 프롬프트 끝에 붙여야 효과가 있었다(중간에 넣으면 같은 메뉴가 반복됐다).
+MENU_NAME_RULE = (
+    " 반드시 포함해야 하는 품목은 ingredients에 넣으세요. menu_name은 실제 요리 이름만 쓰고, "
+    "재료 이름을 앞에 덧붙이거나 같은 단어를 반복하지 마세요(좋은 예: 계란말이, 대파계란국, 양파볶음 / "
+    "나쁜 예: 계란 계란말이, 계란계란국). 여러 끼니를 만들 때는 메뉴 이름이 서로 겹치지 않게 하세요."
+)
+
 # Bedrock strict tool use는 JSON Schema 일부만 지원한다. minLength, maxLength, minimum, maxItems,
 # 1보다 큰 minItems를 넣으면 ValidationException으로 요청 자체가 거절된다.
 # 길이, 개수, 최솟값 제약은 응답을 받은 뒤 서비스의 Pydantic 모델로 검증한다.
@@ -214,6 +222,7 @@ class BedrockGateway:
             "양념은 소금, 설탕, 간장, 식용유, 후추, 참기름, 식초, 고춧가루만 허용됩니다.\n"
             f"priority_item_id: {priority_item_id}\n"
             f"사용 가능한 재고: {json.dumps(inventory_context, ensure_ascii=False)}"
+            f"{MENU_NAME_RULE}"
         )
         if excluded_menu_name:
             prompt += f"\n직전 메뉴와 다른 이름을 사용하세요. 직전 메뉴: {excluded_menu_name}"
@@ -273,6 +282,7 @@ class BedrockGateway:
             "식용유, 후추, 참기름, 식초, 고춧가루만 허용됩니다.\n"
             f"기준일: {client_date}\n"
             f"사용 가능한 재고: {json.dumps(inventory_context, ensure_ascii=False)}"
+            f"{MENU_NAME_RULE}"
         )
         if correction:
             prompt += self._correction_prompt(correction)
