@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from app.constants import BASIC_SEASONINGS
 from app.errors import AppError
 from app.gateways.bedrock import (
     BedrockGateway,
@@ -44,9 +45,7 @@ class MealPlanToolMeal(BaseModel):
     day: int = Field(ge=1, le=3)
     slot: Literal["점심", "저녁"]
     menu_name: str = Field(min_length=1, max_length=80)
-    ingredients: list[RecommendationToolIngredient] = Field(
-        min_length=1, max_length=200
-    )
+    ingredients: list[RecommendationToolIngredient] = Field(max_length=200)
     seasonings: list[str]
 
     @field_validator("menu_name")
@@ -124,7 +123,9 @@ class MealPlanService:
                     deadline=deadline,
                     correction=correction,
                 )
-                output = MealPlanToolOutput.model_validate(raw_output)
+                output = MealPlanToolOutput.model_validate(
+                    _drop_invalid_raw_ingredients(raw_output)
+                )
                 return validate_meal_plan(
                     output,
                     usable_items,
@@ -163,6 +164,29 @@ class MealPlanService:
         raise AssertionError("식단 교정 횟수를 초과했습니다.")
 
 
+def _drop_invalid_raw_ingredients(raw_output: object) -> object:
+    """사용량이 1보다 작거나 ID가 UUID가 아닌 재료는 식단 전체를 거절하지 않고 뺀다."""
+    if not isinstance(raw_output, dict) or not isinstance(raw_output.get("meals"), list):
+        return raw_output
+    meals = []
+    for meal in raw_output["meals"]:
+        if isinstance(meal, dict) and isinstance(meal.get("ingredients"), list):
+            kept = []
+            for ingredient in meal["ingredients"]:
+                if not isinstance(ingredient, dict):
+                    continue
+                use = ingredient.get("use_half_units")
+                try:
+                    UUID(str(ingredient.get("item_id")))
+                except ValueError:
+                    continue
+                if isinstance(use, int) and not isinstance(use, bool) and use >= 1:
+                    kept.append(ingredient)
+            meal = {**meal, "ingredients": kept}
+        meals.append(meal)
+    return {**raw_output, "meals": meals}
+
+
 def validate_meal_plan(
     output: MealPlanToolOutput,
     usable_items: list[InternalInventoryItem],
@@ -183,17 +207,45 @@ def validate_meal_plan(
                 f"{position}번째 끼니 전에 사용 가능한 예상 잔여 재고가 없습니다."
             )
         priority_item = select_priority_item(remaining_items, client_date)
+        # 모델은 6끼 동안 남은 재고를 정확히 따라가지 못한다. 규칙 하나를 어겼다고 식단 전체를
+        # 거절하지 않고, 남은 재고에 맞게 사용량을 줄이거나 빼서 받는다. 재료가 하나도 남지 않으면
+        # 그 끼니에는 우선 소비 품목을 넣는다.
+        repaired: list[dict[str, object]] = []
+        seen_ids: set[UUID] = set()
+        for ingredient in meal.ingredients:
+            current = remaining.get(ingredient.item_id)
+            if current is None or ingredient.item_id in seen_ids:
+                continue
+            use_half_units = min(ingredient.use_half_units, current.quantity_half_units)
+            if use_half_units < 1:
+                continue
+            seen_ids.add(ingredient.item_id)
+            repaired.append({"item_id": ingredient.item_id, "use_half_units": use_half_units})
+        if not repaired:
+            repaired.append(
+                {
+                    "item_id": priority_item.id,
+                    "use_half_units": min(2, priority_item.quantity_half_units),
+                }
+            )
+        seasonings = list(
+            dict.fromkeys(
+                name
+                for name in (" ".join(raw.split()) for raw in meal.seasonings)
+                if name in BASIC_SEASONINGS
+            )
+        )
         recommendation_output = RecommendationToolOutput.model_validate(
             {
                 "menu_name": meal.menu_name,
-                "ingredients": meal.ingredients,
-                "seasonings": meal.seasonings,
+                "ingredients": repaired,
+                "seasonings": seasonings,
             }
         )
         recommendation = validate_recommendation(
             recommendation_output,
             remaining_items,
-            priority_item.id,
+            recommendation_output.ingredients[0].item_id,
             None,
         )
         for ingredient in recommendation_output.ingredients:

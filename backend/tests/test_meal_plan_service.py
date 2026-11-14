@@ -137,12 +137,6 @@ def test_wrong_sequence_is_corrected_once() -> None:
     [
         {
             "meals": [
-                meal(1, "점심", TOFU_ID, "잘못된 우선 품목"),
-                *valid_plan()["meals"][1:],
-            ]
-        },
-        {
-            "meals": [
                 {
                     **valid_plan()["meals"][0],
                     "ingredients": [
@@ -165,7 +159,7 @@ def test_wrong_sequence_is_corrected_once() -> None:
         },
     ],
 )
-def test_priority_overuse_and_expired_inventory_are_rejected(
+def test_plans_that_run_out_of_stock_are_rejected(
     invalid_plan: dict,
 ) -> None:
     gateway = SequenceGateway([invalid_plan])
@@ -218,3 +212,22 @@ def test_gateway_errors_are_mapped_for_meal_plans(
     assert caught.value.status_code == expected_status
     assert caught.value.code == expected_code
     assert caught.value.retryable is True
+
+
+def test_meal_without_priority_item_is_accepted_instead_of_rejecting_whole_plan() -> None:
+    # 모델이 끼니마다 우선 소비 품목을 정확히 따르지 못해도 식단 전체를 거절하지 않는다.
+    plan = {
+            "meals": [
+                meal(1, "점심", TOFU_ID, "잘못된 우선 품목"),
+                *valid_plan()["meals"][1:],
+            ]
+        }
+    gateway = SequenceGateway([plan])
+    service = MealPlanService(
+        MemoryRepository(usable_inventory()), gateway, clock=lambda: 13.0
+    )
+
+    result = service.create(DEVICE_ID, date(2026, 4, 10), deadline=20.0)
+
+    assert len(result.meals) == 6
+    assert len(gateway.calls) == 1
