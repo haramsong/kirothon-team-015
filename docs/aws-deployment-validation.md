@@ -309,3 +309,31 @@ SAM artifact bucket은 `AES256` 서버 측 암호화, versioning `Enabled`, 네 
 | Invalidation path/status | `/*`, `Completed` |
 
 frontend build에는 stack output의 ApiUrl에서 마지막 `/`를 제거한 값을 `VITE_API_BASE_URL`로 주입했습니다. 생성된 `frontend/dist`를 stack output의 정적 버킷에 동기화한 뒤 같은 stack output의 배포 ID에 invalidation을 생성했습니다. 삭제 명령과 S3 `--delete`는 사용하지 않았습니다. 모든 로컬 AWS CLI와 SAM 명령에는 `--profile default --region ap-northeast-2`를 사용했으며 자격 증명이나 사용자 데이터는 기록하지 않았습니다.
+
+## Task 7.1: GitHub variables 및 workflow dispatch 스크립트
+
+### 구현 결과
+
+- `scripts/deployment/configure-github.sh`는 Git branch·origin과 로컬 AWS 계정·리전을 먼저 검사하고, Bootstrap Stack의 `GitHubDeploymentRoleArn`과 `SamArtifactBucketName` output 형식을 확인합니다.
+- GitHub CLI의 `github.com` 인증과 대상 저장소 `haramsong/my-own-fridge`를 확인한 뒤에만 `AWS_ROLE_ARN`, `AWS_REGION`, `SAM_STACK_NAME`, `SAM_ARTIFACT_BUCKET` 네 repository variable을 고정 allowlist로 설정합니다.
+- variable 이름과 값은 인자로 받지 않으며, 네 변수를 설정한 뒤 `gh variable list --repo haramsong/my-own-fridge --json name,value` 결과에서 값까지 다시 검증합니다. AWS access key 또는 secret access key 이름은 allowlist에 포함하지 않았습니다.
+- `scripts/deployment/dispatch-cd.sh`는 현재 `origin/main` SHA를 읽고 선택적 인자로 전달한 SHA와 일치하는지 확인합니다. 기존 run ID 목록을 저장한 뒤 `cd.yml`을 저장소 `haramsong/my-own-fridge`의 `main` ref로 실행하고 새 run ID만 선택합니다.
+- 새 run을 `gh run watch --exit-status`로 기다린 뒤 `gh run view` 결과의 `conclusion=success`와 `headSha=origin/main SHA`를 모두 검증합니다.
+- `gh`가 없거나 인증되지 않았으면 repository variable 설정이나 workflow dispatch 전에 실패하고, 같은 대상과 값으로 실행할 수동 `gh` 명령을 표시합니다.
+- 모든 로컬 AWS CLI 조회에는 `haram`이 아닌 `default` 프로파일과 `ap-northeast-2` 리전을 명시했습니다.
+
+### 검증 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| `bash -n` 셸 구문 검사 | 두 스크립트 모두 통과 |
+| GitHub 설정·dispatch 단위 테스트 | 11개 통과 |
+| 네 repository variable allowlist 및 조회 검증 | 통과 |
+| AWS access key 이름 인자·설정 거부 | 통과 |
+| `gh` 누락·미인증 시 변경 전 중단 및 수동 명령 출력 | 통과 |
+| `cd.yml`, 저장소, `main` ref 고정 검사 | 통과 |
+| workflow conclusion 및 head SHA 불일치 실패 검사 | 통과 |
+| 로컬 AWS profile/region 고정 검사 | `default`, `ap-northeast-2` 일치 |
+| `git diff --check` | 통과 |
+
+이 Task에서는 fake `aws`, `git`, `gh` 실행 파일만 사용해 테스트했습니다. 실제 GitHub repository variable을 설정하거나 workflow를 dispatch하지 않았으며, Task 7.3에서 대상과 인증을 다시 확인한 뒤 스크립트를 실행합니다.
