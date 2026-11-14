@@ -55,6 +55,12 @@ def create_app(
         redoc_url=None,
     )
     settings = get_settings()
+    if settings.app_env == "test":
+        from app.local_adapters import create_local_adapters
+
+        local_repository, local_gateway = create_local_adapters()
+        inventory_repository = inventory_repository or local_repository
+        bedrock_gateway = bedrock_gateway or local_gateway
     application.state.inventory_repository = inventory_repository
     application.state.inventory_table_name = settings.table_name
     application.state.bedrock_gateway = bedrock_gateway

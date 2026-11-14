@@ -248,3 +248,27 @@
 
 - 별도 선택 없이 명세의 추천 경로인 FastAPI 애플리케이션 경계 테스트와 인메모리 adapter 주입 방식을 적용했습니다.
 - 브라우저 UI 자체의 렌더링 검증은 기존 component test가 담당하며, 이번 작업은 실제 HTTP API 계약을 따라 전체 백엔드 데모 경로를 연결하는 데 한정했습니다.
+
+### Task 9.2: Vite+uvicorn 로컬 자동 smoke 검증
+
+상태: **완료**
+
+구현 결과:
+
+- `scripts/smoke-local.sh` 비대화형 스크립트가 uvicorn과 Vite를 임시 child process로 시작하고, 제한 시간 안에 각 서버의 준비 상태를 확인하도록 구현했습니다.
+- API `/api/health` 응답, Vite SPA `index.html`의 앱 진입점과 서비스명, `http://localhost:5173` origin의 CORS 및 `Content-Type`·`X-Device-Id` 허용 헤더를 검사합니다.
+- 성공·실패·signal 종료 모두에서 trap으로 두 child process를 종료하며, 성공 경로에서는 `kill -0`으로 종료를 다시 확인해 장시간 실행되는 개발 서버를 남기지 않습니다.
+- `APP_ENV=test`이면 FastAPI가 `LocalInventoryRepository`와 `LocalBedrockGateway`를 선택합니다. 스크립트는 AWS credential 환경 변수를 제거하고 EC2 metadata 조회도 비활성화해 실제 DynamoDB나 Bedrock에 접근하지 않습니다.
+- 로컬 실행에만 필요한 `uvicorn==0.34.2`를 백엔드 개발·테스트 의존성에 추가했습니다.
+
+검증:
+
+- `backend/.venv/bin/python -m pytest backend/tests/test_local_runtime.py`: 3개 테스트 통과
+- `./scripts/smoke-local.sh`: API health, SPA index, CORS 검사 통과
+- 스크립트 성공 경로의 명시적 종료 검사 통과: uvicorn과 Vite child process 모두 종료됨
+- 기존 의존성의 Starlette `BlockingPortal` deprecation warning 1건 외 테스트 실패 없음
+
+결정/제약:
+
+- 별도 선택 없이 명세의 추천 경로인 `APP_ENV=test` 전용 메모리 adapter를 적용했습니다.
+- smoke는 서버 기동과 HTTP/CORS 경계를 검증하며, 전체 등록·추천·차감 동작은 Task 9.1의 종단 간 테스트가 담당합니다.

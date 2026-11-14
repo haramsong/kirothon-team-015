@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class Settings(BaseModel):
+    app_env: str
     cors_origins: tuple[str, ...]
     table_name: str
     model_id: str
@@ -17,6 +18,7 @@ def get_settings() -> Settings:
         origin.strip() for origin in configured_origins.split(",") if origin.strip()
     )
     return Settings(
+        app_env=os.getenv("APP_ENV", "production"),
         cors_origins=origins,
         table_name=os.getenv("TABLE_NAME", "my-own-fridge-inventory"),
         model_id=os.getenv(
