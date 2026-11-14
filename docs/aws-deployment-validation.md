@@ -98,3 +98,27 @@
 | 모든 fake AWS 호출의 profile/region 고정 검사 | `default`, `ap-northeast-2` 일치 |
 
 이 Task에서는 fake `aws`·`git` 실행 파일을 사용한 단위 테스트와 셸 구문 검사만 수행했습니다. 실제 AWS API 호출, CloudFormation stack 배포, IAM 역할·OIDC 공급자 생성 및 S3 bucket 생성은 수행하지 않았으며 Task 6.1에서 승인 대상을 다시 확인한 후 실행합니다.
+
+## Task 3.1: GitHub Actions CI workflow와 runtime 고정
+
+### 구현 결과
+
+- 루트 `.nvmrc`에 Node.js major version `22`를 고정했습니다.
+- `.github/workflows/ci.yml`은 `main` 대상 pull request, `main` push 및 `workflow_dispatch`에서 동일한 검증 job을 실행합니다.
+- workflow는 Python 3.13, `.nvmrc`의 Node.js 22 및 AWS SAM CLI를 설정한 뒤 lockfile 기반 프론트엔드 설치와 백엔드 개발 의존성 설치를 수행합니다.
+- 백엔드 테스트, 프론트엔드 비대화형 테스트, TypeScript 검사, production build, 배포 자동화 테스트, SAM template 검증 및 SAM build를 선행 성공 순서대로 실행합니다.
+- workflow 권한은 `contents: read`만 허용합니다. `id-token: write`, AWS 배포 자격 증명 설정, 장기 AWS access key 및 AWS 변경 명령은 포함하지 않았습니다.
+- CI의 SAM 검증은 자격 증명 없이 `ap-northeast-2`를 명시합니다. 로컬 AWS/SAM 작업은 기존 규칙대로 `default` profile과 `ap-northeast-2`를 사용합니다.
+
+### 검증 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| workflow trigger, 권한, runtime 및 금지 자격 증명 패턴 정적 검사 | 통과 |
+| 백엔드 테스트 | 91개 통과 |
+| 프론트엔드 테스트 | 48개 통과 |
+| TypeScript 검사 및 production build | 통과 (Node.js 22.22.0) |
+| 배포 자동화 테스트 | 37개 통과 |
+| `sam validate` 및 `sam build` | 통과 (`--profile default --region ap-northeast-2`) |
+
+검증 과정에서는 AWS 자격 증명을 설정하거나 AWS 리소스를 생성·변경하지 않습니다.
