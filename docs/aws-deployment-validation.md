@@ -202,3 +202,47 @@
 | `git diff --check` | 통과 |
 
 이 Task의 검증은 workflow 정적 검사와 기존 로컬 단위 테스트만 수행했습니다. 실제 OIDC 수임, SAM 배포, S3 동기화 및 CloudFront invalidation은 실행하지 않았습니다. repository variables 또는 OIDC Bootstrap이 아직 준비되지 않은 상태에서 push로 CD가 시작되면, 배포 대상과 변수 검사 또는 OIDC 수임 단계에서 AWS 변경 전에 안전하게 실패합니다.
+
+## Task 6.1: 승인된 AWS 계정의 OIDC Bootstrap 실제 배포
+
+### 배포 대상 확인
+
+| 항목 | 확인 결과 |
+| --- | --- |
+| AWS profile | `default` |
+| AWS account | `462747820533` 일치 |
+| AWS region | `ap-northeast-2` 일치 |
+| Git branch | `main` 일치 |
+| Git remote | `https://github.com/haramsong/my-own-fridge.git` 일치 |
+| 기존 GitHub OIDC provider | 승인 계정의 `token.actions.githubusercontent.com` 공급자 1개 재사용 |
+
+모든 대상 검사는 AWS 변경 명령보다 먼저 수행했습니다. 계정, 리전, 저장소 및 branch가 승인값과 일치한 경우에만 CloudFormation 배포를 진행했습니다. 로컬 AWS 명령에는 모두 `--profile default --region ap-northeast-2`를 명시했습니다.
+
+### 실제 배포 결과
+
+| 항목 | 결과 |
+| --- | --- |
+| Stack name | `my-own-fridge-github-oidc` |
+| Stack status | `CREATE_COMPLETE` |
+| Stack ID | `arn:aws:cloudformation:ap-northeast-2:462747820533:stack/my-own-fridge-github-oidc/16eab1d0-dff4-11f1-a41f-06fff1dc9bab` |
+| 생성 시각 | `2026-11-14T06:24:47.532000+00:00` |
+| GitHub deployment role | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
+| SAM artifact bucket | `my-own-fridge-github-oidc-samartifactbucket-vctylgw6itbg` |
+| OIDC provider | `arn:aws:iam::462747820533:oidc-provider/token.actions.githubusercontent.com` |
+
+배포 역할의 최대 session duration은 3,600초입니다. 실제 IAM trust policy에서 다음 제한을 확인했습니다.
+
+- Federated principal: 승인 계정의 `token.actions.githubusercontent.com` OIDC provider
+- Action: `sts:AssumeRoleWithWebIdentity`
+- Audience: `sts.amazonaws.com` 정확 일치
+- Subject: `repo:haramsong/my-own-fridge:ref:refs/heads/main` 정확 일치
+
+SAM artifact bucket은 `AES256` 서버 측 암호화, versioning `Enabled`, 네 public access block 항목 `true`, object ownership `BucketOwnerEnforced`로 확인했습니다.
+
+### 실제 실행 중 확인한 호환성 문제와 복구
+
+최초 `bootstrap-oidc.sh` 실행은 현재 AWS CLI가 `aws cloudformation deploy`의 `--no-confirm-changeset` 옵션을 지원하지 않아 CloudFormation 변경 전에 중단되었습니다. 같은 검사를 다시 수행하고 해당 미지원 옵션만 제외한 명령으로 배포했으나, IAM Role의 한글 `Description`이 IAM 허용 문자 범위를 벗어나 Role 생성이 실패했고 Stack은 `ROLLBACK_COMPLETE`가 되었습니다.
+
+운영자 승인을 받은 뒤 이번 실패로 생성된 `ROLLBACK_COMPLETE` Stack과 비어 있는 보존 artifact bucket만 정리했습니다. 기존 OIDC provider와 다른 AWS 리소스는 삭제하거나 변경하지 않았습니다. IAM Role 설명을 배포 중에만 ASCII 문자열로 바꾼 템플릿으로 다시 검증·배포하여 `CREATE_COMPLETE`를 확인했고, 로컬 템플릿은 기존 내용으로 복원했습니다. 권한 추가 또는 확대는 수행하지 않았습니다.
+
+이 기록에는 AWS access key, secret access key, session token 또는 사용자 데이터가 포함되지 않습니다.
