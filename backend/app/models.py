@@ -81,7 +81,22 @@ class MealRecommendationDto(ApiModel):
 
 
 class RecipeDto(ApiModel):
-    steps: Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1, max_length=8)]
+    steps: Annotated[
+        list[Annotated[str, Field(min_length=1)]], Field(min_length=1, max_length=8)
+    ]
+
+
+class MealPlanMealDto(ApiModel):
+    id: UUID
+    day: Literal[1, 2, 3]
+    slot: Literal["점심", "저녁"]
+    recommendation: MealRecommendationDto
+
+
+class MealPlanDto(ApiModel):
+    id: UUID
+    inventory_version: Annotated[int, Field(ge=0)]
+    meals: Annotated[list[MealPlanMealDto], Field(min_length=6, max_length=6)]
 
 
 class RecommendationRequest(ApiModel):
@@ -101,6 +116,10 @@ class RecommendationRequest(ApiModel):
 
 class RecipeRequest(ApiModel):
     recommendation: MealRecommendationDto
+
+
+class MealPlanRequest(ApiModel):
+    client_date: date
 
 
 class DeductionItemInput(ApiModel):

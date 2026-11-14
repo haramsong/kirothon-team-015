@@ -11,6 +11,7 @@ from botocore.exceptions import BotoCoreError, ClientError, ConnectTimeoutError,
 RECOGNITION_TOOL_NAME = "emit_recognition"
 RECOMMENDATION_TOOL_NAME = "emit_recommendation"
 RECIPE_TOOL_NAME = "emit_recipe"
+MEAL_PLAN_TOOL_NAME = "emit_meal_plan"
 
 RECOGNITION_TOOL_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -91,6 +92,45 @@ RECIPE_TOOL_SCHEMA: dict[str, Any] = {
         },
     },
     "required": ["ingredient_names", "steps"],
+    "additionalProperties": False,
+}
+
+MEAL_PLAN_TOOL_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "meals": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "day": {"type": "integer", "enum": [1, 2, 3]},
+                    "slot": {"type": "string", "enum": ["점심", "저녁"]},
+                    "menu_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80,
+                    },
+                    "ingredients": RECOMMENDATION_TOOL_SCHEMA["properties"][
+                        "ingredients"
+                    ],
+                    "seasonings": RECOMMENDATION_TOOL_SCHEMA["properties"][
+                        "seasonings"
+                    ],
+                },
+                "required": [
+                    "day",
+                    "slot",
+                    "menu_name",
+                    "ingredients",
+                    "seasonings",
+                ],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["meals"],
     "additionalProperties": False,
 }
 
@@ -213,6 +253,37 @@ class BedrockGateway:
             tool_schema=RECIPE_TOOL_SCHEMA,
             content=[{"text": prompt}],
             max_tokens=1800,
+        )
+
+    def emit_meal_plan(
+        self,
+        inventory_context: list[dict[str, Any]],
+        client_date: str,
+        deadline: float,
+        correction: str | None = None,
+    ) -> dict[str, Any]:
+        """현재 재고의 예상 잔여량을 순차 반영한 3일 식단을 생성합니다."""
+        prompt = (
+            "다음 재고만 사용해 3일 동안 매일 점심과 저녁, 정확히 6개 끼니를 "
+            "(1,점심), (1,저녁), (2,점심), (2,저녁), (3,점심), (3,저녁) 순서로 생성하세요. "
+            "각 끼니 직전까지 사용한 수량을 재고에서 빼고, 남은 재고 중 기준일로부터 0~3일 안에 "
+            "소비기한이 오는 가장 이른 품목을 반드시 포함하세요. 그런 품목이 없으면 남은 품목 중 "
+            "소비기한이 가장 이른 품목을 반드시 포함하세요. 전체 사용량은 최초 재고 수량을 넘길 수 없고, "
+            "각 사용량은 0.5개를 1로 하는 use_half_units 정수입니다. 양념은 소금, 설탕, 간장, "
+            "식용유, 후추, 참기름, 식초, 고춧가루만 허용됩니다.\n"
+            f"기준일: {client_date}\n"
+            f"사용 가능한 재고: {json.dumps(inventory_context, ensure_ascii=False)}"
+        )
+        if correction:
+            prompt += self._correction_prompt(correction)
+
+        return self._converse_with_tool(
+            deadline=deadline,
+            tool_name=MEAL_PLAN_TOOL_NAME,
+            tool_description="현재 재고를 순서대로 소비하는 3일 6끼 식단을 생성합니다.",
+            tool_schema=MEAL_PLAN_TOOL_SCHEMA,
+            content=[{"text": prompt}],
+            max_tokens=5000,
         )
 
     def _converse_with_tool(

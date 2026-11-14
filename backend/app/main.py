@@ -156,12 +156,14 @@ def create_app(
 
     from app.routes.deduction import router as deduction_router
     from app.routes.inventory import router as inventory_router
+    from app.routes.meal_plan import router as meal_plan_router
     from app.routes.recognition import router as recognition_router
     from app.routes.recommendation import router as recommendation_router
 
     application.include_router(inventory_router)
     application.include_router(recognition_router)
     application.include_router(recommendation_router)
+    application.include_router(meal_plan_router)
     application.include_router(deduction_router)
     return application
 

@@ -1,4 +1,5 @@
 from app.gateways.bedrock import (
+    MEAL_PLAN_TOOL_NAME,
     RECIPE_TOOL_NAME,
     RECOGNITION_TOOL_NAME,
     RECOMMENDATION_TOOL_NAME,
@@ -165,3 +166,61 @@ def test_emit_recipe_forces_separate_strict_tool() -> None:
     assert call["toolConfig"]["toolChoice"] == {
         "tool": {"name": RECIPE_TOOL_NAME}
     }
+
+
+def test_emit_meal_plan_forces_strict_six_meal_tool() -> None:
+    expected = {
+        "meals": [
+            {
+                "day": day,
+                "slot": slot,
+                "menu_name": f"양파 요리 {index}",
+                "ingredients": [{"item_id": "item-1", "use_half_units": 1}],
+                "seasonings": ["간장"],
+            }
+            for index, (day, slot) in enumerate(
+                [
+                    (1, "점심"),
+                    (1, "저녁"),
+                    (2, "점심"),
+                    (2, "저녁"),
+                    (3, "점심"),
+                    (3, "저녁"),
+                ],
+                start=1,
+            )
+        ]
+    }
+    client = RecordingClient(named_tool_response(MEAL_PLAN_TOOL_NAME, expected))
+    gateway = BedrockGateway("test-model", client=client, clock=lambda: 10.0)
+
+    actual = gateway.emit_meal_plan(
+        inventory_context=[
+            {
+                "item_id": "item-1",
+                "name": "양파",
+                "quantity_half_units": 6,
+                "expiration_date": "2026-04-12",
+            }
+        ],
+        client_date="2026-04-10",
+        deadline=20.0,
+    )
+
+    assert actual == expected
+    call = client.calls[0]
+    tool_spec = call["toolConfig"]["tools"][0]["toolSpec"]
+    schema = tool_spec["inputSchema"]["json"]
+    assert tool_spec["name"] == MEAL_PLAN_TOOL_NAME
+    assert tool_spec["strict"] is True
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["meals"]["minItems"] == 6
+    assert schema["properties"]["meals"]["maxItems"] == 6
+    assert schema["properties"]["meals"]["items"]["additionalProperties"] is False
+    assert call["toolConfig"]["toolChoice"] == {
+        "tool": {"name": MEAL_PLAN_TOOL_NAME}
+    }
+    prompt = call["messages"][0]["content"][0]["text"]
+    assert "정확히 6개 끼니" in prompt
+    assert "각 끼니 직전" in prompt
+    assert "2026-04-10" in prompt
