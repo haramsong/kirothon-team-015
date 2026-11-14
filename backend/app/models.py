@@ -103,6 +103,35 @@ class RecipeRequest(ApiModel):
     recommendation: MealRecommendationDto
 
 
+class DeductionItemInput(ApiModel):
+    item_id: UUID
+    quantity: Quantity
+
+    def use_half_units(self) -> int:
+        return quantity_to_half_units(self.quantity)
+
+
+class DeductionRequest(ApiModel):
+    deduction_request_id: UUID
+    items: Annotated[list[DeductionItemInput], Field(min_length=1, max_length=200)]
+
+    @field_validator("items")
+    @classmethod
+    def validate_unique_item_ids(
+        cls, value: list[DeductionItemInput]
+    ) -> list[DeductionItemInput]:
+        item_ids = [item.item_id for item in value]
+        if len(set(item_ids)) != len(item_ids):
+            raise ValueError("같은 품목을 두 번 차감할 수 없습니다.")
+        return value
+
+
+class DeductionResultDto(ApiModel):
+    inventory: InventoryDto
+    deducted_count: Annotated[int, Field(ge=1)]
+    removed_names: list[str]
+
+
 class InternalInventoryItem(ApiModel):
     id: UUID
     name: Annotated[str, Field(min_length=1, max_length=80)]

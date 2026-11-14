@@ -154,6 +154,7 @@ def create_app(
         """애플리케이션 프로세스의 준비 상태를 반환합니다."""
         return success_response(request, {"status": "ok"})
 
+    from app.routes.deduction import router as deduction_router
     from app.routes.inventory import router as inventory_router
     from app.routes.recognition import router as recognition_router
     from app.routes.recommendation import router as recommendation_router
@@ -161,6 +162,7 @@ def create_app(
     application.include_router(inventory_router)
     application.include_router(recognition_router)
     application.include_router(recommendation_router)
+    application.include_router(deduction_router)
     return application
 
 

@@ -13,6 +13,7 @@
 | 2026-04-07 | 공통 | 명세의 추천 경로를 별도 확인 없이 진행 | 사용자 승인 |
 | 2026-04-07 | Task 4.1 | 브라우저 `createImageBitmap(..., { imageOrientation: 'from-image' })`와 Canvas JPEG 재인코딩 사용 | EXIF 방향 반영, 종횡비 유지, 클라이언트 용량 제한을 한 흐름에서 처리 |
 | 2026-04-07 | Task 4.1 | 기존 `ItemModal`, `InventoryProvider`, `ApiClient`를 재사용 | 등록 초안 검증과 성공 시 재고 교체 규칙을 기존 구현과 일치시킴 |
+| 2026-04-07 | Task 6.1 | 영구 차감 기록과 재고 교체를 DynamoDB 트랜잭션 한 번으로 처리 | 10분 제한 없는 멱등성과 부분 차감 방지 |
 
 ## 작업 현황
 
@@ -106,3 +107,27 @@
 
 - `요리했어요` 버튼은 조리 단계 상태와 무관하게 유지하되, 차감 초안 모달 연결은 Task 6.2 범위로 남겼습니다.
 - 다른 작업자의 미커밋 재고 편집 파일과 명세 상태 파일은 수정하거나 커밋하지 않았습니다.
+
+### Task 6.1: 차감 순수 함수와 DynamoDB 원자·멱등 service
+
+상태: **완료**
+
+구현 결과:
+
+- 차감 품목을 item ID순으로 정렬한 canonical JSON을 SHA-256으로 해시해 요청 payload를 식별합니다.
+- 차감 전에 빈 요청, 중복 item ID, 존재하지 않는 품목, 0.5개 미만 수량과 재고 초과 수량을 모두 검증하며 원본 재고를 변경하지 않습니다.
+- 유효한 차감은 수량을 정확히 한 번 줄이고 결과가 0개인 품목을 제거합니다.
+- 재고 version 조건부 Put과 `DEDUCTION#<requestId>` 신규 조건부 Put을 단일 `TransactWriteItems`로 실행합니다.
+- 동일 요청 ID와 동일 payload는 영구 차감 기록을 읽어 기존 성공 결과를 반환하고, 다른 payload 재사용은 `409 IDEMPOTENCY_KEY_REUSED`로 거부합니다.
+- 트랜잭션 경합 시 차감 기록을 일관 읽기로 다시 확인해 동일 요청 재시도와 재고 version 충돌을 구분합니다.
+- `POST /api/deductions` endpoint와 공통 성공·오류 envelope를 연결했습니다.
+
+검증:
+
+- `cd backend && .venv/bin/python -m pytest`: 63개 테스트 통과
+- 기존 의존성의 Starlette `BlockingPortal` deprecation warning 1건 외 실패 없음
+
+결정/제약:
+
+- 별도 선택 없이 명세의 추천 경로인 영구 차감 기록 방식을 적용했습니다.
+- Property 17·18과 프론트엔드 차감 모달은 각각 Task 6.4·6.5와 Task 6.2 범위로 남겼습니다.
