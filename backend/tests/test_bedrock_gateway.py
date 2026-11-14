@@ -59,6 +59,10 @@ def test_emit_recognition_forces_strict_tool_and_returns_its_input() -> None:
         "tool": {"name": RECOGNITION_TOOL_NAME}
     }
     assert call["messages"][0]["content"][1]["image"]["format"] == "jpeg"
+    prompt = call["messages"][0]["content"][0]["text"]
+    assert "마트 영수증 또는 온라인 주문내역" in prompt
+    assert "옵션 수량과 묶음 수량" in prompt
+    assert "kg, g, L, mL" in prompt
 
 
 def test_emit_recognition_rejects_response_without_forced_tool() -> None:

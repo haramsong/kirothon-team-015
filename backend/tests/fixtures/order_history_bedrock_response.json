@@ -1,0 +1,44 @@
+{
+  "output": {
+    "message": {
+      "role": "assistant",
+      "content": [
+        {
+          "toolUse": {
+            "toolUseId": "fixture-order-history-1",
+            "name": "emit_recognition",
+            "input": {
+              "purchase_date": "2026-04-06",
+              "items": [
+                {
+                  "name": "[옵션: 중] 국내산 양파 1.5kg x 2망",
+                  "quantity_half_units": 32,
+                  "storage_location": "실온",
+                  "detected_expiration_date": null,
+                  "is_food": true,
+                  "is_basic_seasoning": false
+                },
+                {
+                  "name": "친환경 두부 300g 3팩",
+                  "quantity_half_units": 6,
+                  "storage_location": "냉장",
+                  "detected_expiration_date": "2026-04-11",
+                  "is_food": true,
+                  "is_basic_seasoning": false
+                },
+                {
+                  "name": "[선택: 1L] 우유 1L × 2팩",
+                  "quantity_half_units": 4,
+                  "storage_location": "냉장",
+                  "detected_expiration_date": null,
+                  "is_food": true,
+                  "is_basic_seasoning": false
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import re
 import time
 from datetime import date
 from typing import Any
@@ -60,6 +61,31 @@ SHELF_LIFE_DAYS: dict[str, dict[StorageLocation, int]] = {
         StorageLocation.ROOM_TEMPERATURE: 1,
     },
 }
+
+OPTION_PATTERN = re.compile(r"[\[(](?:옵션|선택)\s*[:：]?[^\])]*[\])]")
+MULTIPLIER_PATTERN = re.compile(
+    r"(?:[xX×]\s*\d+(?:\.\d+)?\s*(?:개|입|구|팩|봉|망|묶음)?)"
+)
+PACKAGE_PATTERN = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:kg|g|ml|l|개입|입|구|팩|봉|망|묶음)",
+    re.IGNORECASE,
+)
+PRODUCT_DESCRIPTORS = re.compile(
+    r"(?<!\S)(?:국내산|국산|친환경|유기농|무농약|냉장|냉동|대용량|산지직송)(?!\S)"
+)
+SEPARATOR_PATTERN = re.compile(r"\s*[-_/|,·]+\s*")
+
+
+def normalize_order_item_name(name: str) -> str:
+    """주문 상품의 옵션·중량·묶음 표기를 제거해 일반 품목명으로 만듭니다."""
+    original = " ".join(name.split())
+    normalized = OPTION_PATTERN.sub(" ", original)
+    normalized = MULTIPLIER_PATTERN.sub(" ", normalized)
+    normalized = PACKAGE_PATTERN.sub(" ", normalized)
+    normalized = PRODUCT_DESCRIPTORS.sub(" ", normalized)
+    normalized = SEPARATOR_PATTERN.sub(" ", normalized)
+    normalized = " ".join(normalized.split()).strip(" -_/|,·")
+    return normalized or original
 
 
 class RecognitionToolItem(BaseModel):
@@ -169,7 +195,7 @@ def normalize_recognition(
     items: list[InventoryItemDto] = []
 
     for raw_item in output.items:
-        normalized_name = raw_item.name.strip()
+        normalized_name = normalize_order_item_name(raw_item.name)
         if (
             not raw_item.is_food
             or raw_item.is_basic_seasoning

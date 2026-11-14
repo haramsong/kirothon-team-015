@@ -1,12 +1,21 @@
+import json
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from app.errors import AppError
-from app.gateways.bedrock import BedrockGatewayError, BedrockTimeoutError
-from app.services.recognition import MAX_IMAGE_BYTES, RecognitionService, validate_jpeg
+from app.gateways.bedrock import BedrockGateway, BedrockGatewayError, BedrockTimeoutError
+from app.models import RecognitionResultDto
+from app.services.recognition import (
+    MAX_IMAGE_BYTES,
+    RecognitionService,
+    normalize_order_item_name,
+    validate_jpeg,
+)
 
 JPEG = b"\xff\xd8\xffimage"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class SequenceGateway:
@@ -186,3 +195,57 @@ def test_gateway_failures_are_mapped_to_distinct_api_errors(
     assert caught.value.status_code == status_code
     assert caught.value.code == code
     assert caught.value.retryable is True
+
+
+@pytest.mark.parametrize(
+    ("product_name", "expected"),
+    [
+        ("[옵션: 중] 국내산 양파 1.5kg x 2망", "양파"),
+        ("친환경 두부 300g 3팩", "두부"),
+        ("[선택: 1L] 우유 1L × 2팩", "우유"),
+        ("대파", "대파"),
+    ],
+)
+def test_order_item_name_removes_options_bundle_and_weight_labels(
+    product_name: str, expected: str
+) -> None:
+    assert normalize_order_item_name(product_name) == expected
+
+
+class FixtureBedrockClient:
+    def __init__(self, response: dict) -> None:
+        self.response = response
+        self.calls: list[dict] = []
+
+    def converse(self, **kwargs: object) -> dict:
+        self.calls.append(kwargs)
+        return self.response
+
+
+def test_order_history_fixture_uses_shared_recognition_result_path() -> None:
+    fixture = json.loads(
+        (FIXTURES / "order_history_bedrock_response.json").read_text(encoding="utf-8")
+    )
+    client = FixtureBedrockClient(fixture)
+    gateway = BedrockGateway("test-model", client=client, clock=lambda: 1.0)
+    service = RecognitionService(gateway, clock=lambda: 1.0)
+
+    result = service.recognize(
+        JPEG,
+        "image/jpeg",
+        request_date=date(2026, 4, 7),
+        deadline=20.0,
+    )
+
+    assert isinstance(result, RecognitionResultDto)
+    assert result.purchase_date == date(2026, 4, 6)
+    assert result.purchase_date_source == "detected"
+    assert [(item.name, item.quantity) for item in result.items] == [
+        ("양파", 16.0),
+        ("두부", 3.0),
+        ("우유", 2.0),
+    ]
+    assert result.items[0].expiration_date == date(2026, 4, 20)
+    assert result.items[1].expiration_estimated is False
+    assert result.items[2].expiration_date == date(2026, 4, 13)
+    assert len(client.calls) == 1

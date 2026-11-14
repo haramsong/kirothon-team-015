@@ -154,3 +154,26 @@
 
 - 별도 선택 없이 명세의 추천 경로를 적용했습니다.
 - Task 6.3~6.7의 property test와 추가 통합 테스트는 이번 Task 범위에 포함하지 않았습니다.
+
+### Task 7.1: 주문내역 fixture와 인식 정규화 보완
+
+상태: **완료**
+
+구현 결과:
+
+- 실제 `emit_recognition` 도구 응답 구조의 온라인 주문내역 fixture를 추가했습니다. 주문내역도 기존 `POST /api/recognitions`와 `RecognitionResultDto` 경로를 그대로 사용하며 별도 업로드 유형이나 endpoint를 만들지 않았습니다.
+- 상품명에서 `[옵션: ...]`, `[선택: ...]`, 원산지·상품 설명, `1.5kg`·`300g`·`1L` 중량, `x 2망`·`3팩` 묶음 표기를 제거해 일반 품목명으로 정규화합니다.
+- Bedrock 인식 프롬프트에 옵션·묶음 수량을 모두 반영하고 kg/g/L/mL를 일반 판매 단위의 개수와 `quantity_half_units`로 환산하도록 명시했습니다.
+- fixture에서 `양파 1.5kg x 2망 → 양파 16개`, `두부 300g 3팩 → 두부 3개`, `우유 1L × 2팩 → 우유 2개`가 공통 DTO로 변환되는지 검증했습니다.
+
+검증:
+
+- 인식 관련 테스트: 23개 통과
+- 전체 백엔드 테스트: 68개 통과
+- `python -m compileall -q backend/app backend/tests`: 통과
+- 기존 의존성의 Starlette `BlockingPortal` deprecation warning 1건 외 실패 없음
+
+결정/제약:
+
+- 별도 선택 없이 명세의 추천안대로 기존 단일 이미지 입력과 단일 인식 endpoint를 유지했습니다.
+- Task 7.2의 브라우저 업로드부터 batch 저장까지 자동 통합 테스트는 이번 Task 범위에 포함하지 않았습니다.
