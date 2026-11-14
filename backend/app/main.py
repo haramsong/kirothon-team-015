@@ -44,7 +44,10 @@ def error_response(request: Request, error: AppError) -> JSONResponse:
     )
 
 
-def create_app(inventory_repository: Any | None = None) -> FastAPI:
+def create_app(
+    inventory_repository: Any | None = None,
+    bedrock_gateway: Any | None = None,
+) -> FastAPI:
     application = FastAPI(
         title="나만의 냉장고 API",
         version="0.1.0",
@@ -54,6 +57,8 @@ def create_app(inventory_repository: Any | None = None) -> FastAPI:
     settings = get_settings()
     application.state.inventory_repository = inventory_repository
     application.state.inventory_table_name = settings.table_name
+    application.state.bedrock_gateway = bedrock_gateway
+    application.state.model_id = settings.model_id
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -66,6 +71,7 @@ def create_app(inventory_repository: Any | None = None) -> FastAPI:
     async def request_boundary(request: Request, call_next: Any) -> Any:
         request.state.request_id = str(uuid4())
         started_at = time.monotonic()
+        request.state.deadline = started_at + 27
         response = await call_next(request)
         response.headers["X-Request-Id"] = request.state.request_id
         logger.info(
@@ -149,8 +155,10 @@ def create_app(inventory_repository: Any | None = None) -> FastAPI:
         return success_response(request, {"status": "ok"})
 
     from app.routes.inventory import router as inventory_router
+    from app.routes.recognition import router as recognition_router
 
     application.include_router(inventory_router)
+    application.include_router(recognition_router)
     return application
 
 

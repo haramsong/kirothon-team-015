@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class Settings(BaseModel):
     cors_origins: tuple[str, ...]
     table_name: str
+    model_id: str
 
 
 @lru_cache
@@ -18,4 +19,7 @@ def get_settings() -> Settings:
     return Settings(
         cors_origins=origins,
         table_name=os.getenv("TABLE_NAME", "my-own-fridge-inventory"),
+        model_id=os.getenv(
+            "MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+        ),
     )
