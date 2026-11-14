@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 
 import { InventoryPage } from '../features/inventory/InventoryPage'
 import { InventoryProvider } from '../features/inventory/InventoryProvider'
+import { RecipePage } from '../features/recipe/RecipePage'
 import { RegistrationPage } from '../features/registration/RegistrationPage'
 import { ToastProvider } from '../features/toast/ToastProvider'
 
@@ -29,15 +30,7 @@ export function AppRoutes() {
     <Routes>
       <Route element={<InventoryPage />} path="/" />
       <Route element={<RegistrationPage />} path="/register" />
-      <Route
-        element={
-          <PlaceholderPage
-            description="현재 냉장고 재료로 만들 수 있는 한 끼를 추천합니다."
-            title="한 끼 추천"
-          />
-        }
-        path="/recipe"
-      />
+      <Route element={<RecipePage />} path="/recipe" />
       <Route
         element={
           <PlaceholderPage
