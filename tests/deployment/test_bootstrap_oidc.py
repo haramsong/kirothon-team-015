@@ -9,6 +9,7 @@ import pytest
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BOOTSTRAP_SCRIPT = ROOT_DIR / "scripts" / "deployment" / "bootstrap-oidc.sh"
+BOOTSTRAP_TEMPLATE = ROOT_DIR / "infra" / "github-oidc-bootstrap.yaml"
 EXPECTED_PROVIDER_ARN = (
     "arn:aws:iam::462747820533:oidc-provider/token.actions.githubusercontent.com"
 )
@@ -127,6 +128,22 @@ def test_bootstrap_runs_guard_discovery_validation_deploy_wait_and_outputs_in_or
         "cloudformation describe-stacks",
     ]
     assert "cloudformation wait stack-exists" in recorded_aws_calls[5]
+    deploy_call = recorded_aws_calls[4]
+    assert "--no-fail-on-empty-changeset" in deploy_call
+    assert "--no-confirm-changeset" not in deploy_call
+
+
+def test_bootstrap_role_description_uses_iam_compatible_ascii() -> None:
+    template = BOOTSTRAP_TEMPLATE.read_text(encoding="utf-8")
+    role_description = next(
+        line.split("Description:", maxsplit=1)[1].strip()
+        for line in template.splitlines()
+        if line.strip().startswith("Description:")
+        and "GitHub Actions OIDC deployment role" in line
+    )
+
+    assert role_description == "GitHub Actions OIDC deployment role for my-own-fridge"
+    assert role_description.isascii()
 
 
 def test_wrong_account_stops_before_provider_discovery_or_changes(tmp_path: Path) -> None:

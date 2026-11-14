@@ -246,3 +246,30 @@ SAM artifact bucket은 `AES256` 서버 측 암호화, versioning `Enabled`, 네 
 운영자 승인을 받은 뒤 이번 실패로 생성된 `ROLLBACK_COMPLETE` Stack과 비어 있는 보존 artifact bucket만 정리했습니다. 기존 OIDC provider와 다른 AWS 리소스는 삭제하거나 변경하지 않았습니다. IAM Role 설명을 배포 중에만 ASCII 문자열로 바꾼 템플릿으로 다시 검증·배포하여 `CREATE_COMPLETE`를 확인했고, 로컬 템플릿은 기존 내용으로 복원했습니다. 권한 추가 또는 확대는 수행하지 않았습니다.
 
 이 기록에는 AWS access key, secret access key, session token 또는 사용자 데이터가 포함되지 않습니다.
+## Task 6.1 후속: OIDC Bootstrap 재현 결함 영구 수정
+
+### 수정 내용
+
+- 현재 AWS CLI가 지원하지 않는 `aws cloudformation deploy --no-confirm-changeset`를 제거했습니다. 비대화형 배포는 기본 change set 자동 실행 동작과 `--no-fail-on-empty-changeset`를 사용합니다.
+- `GitHubDeploymentRole`의 IAM `Description`을 허용 문자 범위에 맞는 ASCII 문구 `GitHub Actions OIDC deployment role for my-own-fridge`로 변경했습니다.
+- 회귀 테스트에서 deploy 호출에 `--no-confirm-changeset`가 없고 `--no-fail-on-empty-changeset`가 있는지 검사하며, IAM 역할 설명의 정확한 값과 ASCII 여부를 검사합니다.
+- IAM action, resource, trust policy를 변경하지 않았으므로 권한 확대는 없습니다.
+
+### 검증과 실제 재실행 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| 승인 계정 사전 검사 | `aws sts get-caller-identity --profile default --region ap-northeast-2` 결과 `462747820533` 일치 |
+| Git 대상 검사 | branch `main`, origin `haramsong/my-own-fridge` 일치 |
+| `bash -n scripts/deployment/bootstrap-oidc.sh` | 통과 |
+| Bootstrap 회귀 테스트 | 7개 통과 |
+| CloudFormation template 검증 | 통과 (`--profile default --region ap-northeast-2`) |
+| 수정 스크립트의 기존 Stack 첫 재실행 | 성공, `UPDATE_COMPLETE` |
+| 동일 입력 두 번째 재실행 | 성공, `No changes to deploy` |
+| 최종 Stack 상태 | `UPDATE_COMPLETE` |
+| IAM Role description | `GitHub Actions OIDC deployment role for my-own-fridge` |
+| GitHub deployment role | `arn:aws:iam::462747820533:role/my-own-fridge-github-deploy` |
+| SAM artifact bucket | `my-own-fridge-github-oidc-samartifactbucket-vctylgw6itbg` |
+| OIDC provider | `arn:aws:iam::462747820533:oidc-provider/token.actions.githubusercontent.com` |
+
+실제 재실행 전마다 `default` 프로파일과 `ap-northeast-2` 리전으로 계정을 확인했습니다. Stack, 역할, 공급자 또는 버킷 삭제, force 동작, IAM 권한 추가는 수행하지 않았습니다.

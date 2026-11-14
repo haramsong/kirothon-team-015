@@ -78,7 +78,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: my-own-fridge-github-deploy
-      Description: GitHub Actions OIDC를 사용하는 나만의 냉장고 배포 역할
+      Description: GitHub Actions OIDC deployment role for my-own-fridge
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: '2012-10-17'

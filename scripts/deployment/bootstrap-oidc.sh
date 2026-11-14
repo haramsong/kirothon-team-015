@@ -82,7 +82,6 @@ deploy_bootstrap_stack() {
       "GitHubBranch=${DEPLOY_BRANCH}" \
       "ApplicationStackName=${SAM_STACK_NAME}" \
       "ExistingGitHubOidcProviderArn=${existing_provider_arn}" \
-    --no-confirm-changeset \
     --no-fail-on-empty-changeset \
     --profile "${AWS_PROFILE}" \
     --region "${AWS_REGION}"
