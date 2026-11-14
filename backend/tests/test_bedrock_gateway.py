@@ -1,8 +1,14 @@
+import pytest
+
 from app.gateways.bedrock import (
     MEAL_PLAN_TOOL_NAME,
+    MEAL_PLAN_TOOL_SCHEMA,
     RECIPE_TOOL_NAME,
+    RECIPE_TOOL_SCHEMA,
     RECOGNITION_TOOL_NAME,
+    RECOGNITION_TOOL_SCHEMA,
     RECOMMENDATION_TOOL_NAME,
+    RECOMMENDATION_TOOL_SCHEMA,
     BedrockGateway,
     BedrockInvalidOutputError,
 )
@@ -214,8 +220,9 @@ def test_emit_meal_plan_forces_strict_six_meal_tool() -> None:
     assert tool_spec["name"] == MEAL_PLAN_TOOL_NAME
     assert tool_spec["strict"] is True
     assert schema["additionalProperties"] is False
-    assert schema["properties"]["meals"]["minItems"] == 6
-    assert schema["properties"]["meals"]["maxItems"] == 6
+    # 6끼 개수 제약은 Bedrock strict 스키마가 지원하지 않아 프롬프트와 Pydantic 검증으로 보장한다.
+    assert "minItems" not in schema["properties"]["meals"]
+    assert "maxItems" not in schema["properties"]["meals"]
     assert schema["properties"]["meals"]["items"]["additionalProperties"] is False
     assert call["toolConfig"]["toolChoice"] == {
         "tool": {"name": MEAL_PLAN_TOOL_NAME}
@@ -224,3 +231,47 @@ def test_emit_meal_plan_forces_strict_six_meal_tool() -> None:
     assert "정확히 6개 끼니" in prompt
     assert "각 끼니 직전" in prompt
     assert "2026-04-10" in prompt
+
+
+# Bedrock structured outputs 문서 기준으로 strict 도구 스키마가 거절당하는 키워드
+UNSUPPORTED_STRICT_KEYWORDS = {
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minLength",
+    "maxLength",
+    "maxItems",
+}
+
+
+def _strict_schema_violations(node: object, path: str = "$") -> list[str]:
+    violations: list[str] = []
+    if isinstance(node, dict):
+        for keyword in UNSUPPORTED_STRICT_KEYWORDS & node.keys():
+            violations.append(f"{path}.{keyword}")
+        if "minItems" in node and node["minItems"] not in (0, 1):
+            violations.append(f"{path}.minItems={node['minItems']}")
+        if node.get("type") == "object" and node.get("additionalProperties") is not False:
+            violations.append(f"{path}.additionalProperties")
+        for key, value in node.items():
+            violations.extend(_strict_schema_violations(value, f"{path}.{key}"))
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            violations.extend(_strict_schema_violations(value, f"{path}[{index}]"))
+    return violations
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        RECOGNITION_TOOL_SCHEMA,
+        RECOMMENDATION_TOOL_SCHEMA,
+        RECIPE_TOOL_SCHEMA,
+        MEAL_PLAN_TOOL_SCHEMA,
+    ],
+    ids=["recognition", "recommendation", "recipe", "meal_plan"],
+)
+def test_strict_tool_schemas_use_only_bedrock_supported_keywords(schema: dict) -> None:
+    assert _strict_schema_violations(schema) == []

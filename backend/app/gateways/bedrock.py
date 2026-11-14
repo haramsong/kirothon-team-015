@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 import time
 from collections.abc import Callable
@@ -13,18 +14,23 @@ RECOMMENDATION_TOOL_NAME = "emit_recommendation"
 RECIPE_TOOL_NAME = "emit_recipe"
 MEAL_PLAN_TOOL_NAME = "emit_meal_plan"
 
+logger = logging.getLogger(__name__)
+
+# Bedrock strict tool use는 JSON Schema 일부만 지원한다. minLength, maxLength, minimum, maxItems,
+# 1보다 큰 minItems를 넣으면 ValidationException으로 요청 자체가 거절된다.
+# 길이, 개수, 최솟값 제약은 응답을 받은 뒤 서비스의 Pydantic 모델로 검증한다.
+# https://docs.aws.amazon.com/bedrock/latest/userguide/structured-output.html
 RECOGNITION_TOOL_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "purchase_date": {"type": ["string", "null"]},
         "items": {
             "type": "array",
-            "maxItems": 200,
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "minLength": 1, "maxLength": 80},
-                    "quantity_half_units": {"type": "integer", "minimum": 1},
+                    "name": {"type": "string"},
+                    "quantity_half_units": {"type": "integer"},
                     "storage_location": {
                         "type": "string",
                         "enum": ["냉장", "냉동", "실온"],
@@ -52,16 +58,15 @@ RECOGNITION_TOOL_SCHEMA: dict[str, Any] = {
 RECOMMENDATION_TOOL_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "menu_name": {"type": "string", "minLength": 1, "maxLength": 80},
+        "menu_name": {"type": "string"},
         "ingredients": {
             "type": "array",
             "minItems": 1,
-            "maxItems": 200,
             "items": {
                 "type": "object",
                 "properties": {
-                    "item_id": {"type": "string", "minLength": 1},
-                    "use_half_units": {"type": "integer", "minimum": 1},
+                    "item_id": {"type": "string"},
+                    "use_half_units": {"type": "integer"},
                 },
                 "required": ["item_id", "use_half_units"],
                 "additionalProperties": False,
@@ -69,7 +74,7 @@ RECOMMENDATION_TOOL_SCHEMA: dict[str, Any] = {
         },
         "seasonings": {
             "type": "array",
-            "items": {"type": "string", "minLength": 1},
+            "items": {"type": "string"},
         },
     },
     "required": ["menu_name", "ingredients", "seasonings"],
@@ -82,13 +87,12 @@ RECIPE_TOOL_SCHEMA: dict[str, Any] = {
         "ingredient_names": {
             "type": "array",
             "minItems": 1,
-            "items": {"type": "string", "minLength": 1},
+            "items": {"type": "string"},
         },
         "steps": {
             "type": "array",
             "minItems": 1,
-            "maxItems": 8,
-            "items": {"type": "string", "minLength": 1},
+            "items": {"type": "string"},
         },
     },
     "required": ["ingredient_names", "steps"],
@@ -100,8 +104,6 @@ MEAL_PLAN_TOOL_SCHEMA: dict[str, Any] = {
     "properties": {
         "meals": {
             "type": "array",
-            "minItems": 6,
-            "maxItems": 6,
             "items": {
                 "type": "object",
                 "properties": {
@@ -109,8 +111,6 @@ MEAL_PLAN_TOOL_SCHEMA: dict[str, Any] = {
                     "slot": {"type": "string", "enum": ["점심", "저녁"]},
                     "menu_name": {
                         "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80,
                     },
                     "ingredients": RECOMMENDATION_TOOL_SCHEMA["properties"][
                         "ingredients"
@@ -322,7 +322,18 @@ class BedrockGateway:
             )
         except (ReadTimeoutError, ConnectTimeoutError, TimeoutError) as error:
             raise BedrockTimeoutError("Bedrock 응답 시간이 초과되었습니다.") from error
-        except (ClientError, BotoCoreError) as error:
+        except ClientError as error:
+            # 원인이 응답에 드러나지 않으므로 Bedrock 오류 코드와 메시지를 로그로 남긴다.
+            details = error.response.get("Error", {})
+            logger.warning(
+                "Bedrock %s 호출 실패: %s %s",
+                tool_name,
+                details.get("Code"),
+                details.get("Message"),
+            )
+            raise BedrockGatewayError("Bedrock 호출에 실패했습니다.") from error
+        except BotoCoreError as error:
+            logger.warning("Bedrock %s 호출 실패: %s", tool_name, type(error).__name__)
             raise BedrockGatewayError("Bedrock 호출에 실패했습니다.") from error
 
         if self._clock() >= deadline:
