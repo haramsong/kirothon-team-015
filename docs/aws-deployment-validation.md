@@ -173,3 +173,32 @@
 | S3 `--delete`, stack/bucket 삭제 및 force 동작 부재 | 통과 |
 
 검증은 fake `aws`, `sam`, `npm`, `git` 실행 파일을 사용한 단위 테스트와 셸 구문 검사만 수행했습니다. 실제 CloudFormation/SAM 배포, S3 동기화 또는 CloudFront invalidation은 수행하지 않았으며, 구현한 스크립트의 실제 실행은 Task 6.2에서 수행합니다.
+## Task 5.3: GitHub Actions CD workflow
+
+### 구현 결과
+
+- `.github/workflows/cd.yml`은 `main` push와 `workflow_dispatch`에서 실행되며, workflow 권한을 `contents: read`, `id-token: write`로 제한했습니다.
+- `my-own-fridge-production` concurrency group에 `cancel-in-progress: false`를 적용해 진행 중인 운영 배포를 취소하지 않고 직렬화했습니다.
+- AWS 변경 전에 저장소 `haramsong/my-own-fridge`, ref `refs/heads/main`과 `AWS_ROLE_ARN`, `AWS_REGION`, `SAM_STACK_NAME`, `SAM_ARTIFACT_BUCKET` repository variables의 존재 및 승인된 형식을 검사합니다.
+- `aws-actions/configure-aws-credentials@v4`로만 OIDC 역할을 수임하고 `allowed-account-ids: 462747820533`을 적용했습니다. AWS access key secret 또는 credential file은 정의하지 않았습니다.
+- OIDC 수임 후 STS 계정과 `ap-northeast-2` 리전을 다시 검사한 다음 Python 3.13, Node.js 22, 백엔드·프론트엔드 테스트, TypeScript 검사, 프론트엔드 검증 build, 배포 자동화 테스트와 SAM validate/build를 순서대로 실행합니다.
+- 검증 성공 후에만 Bootstrap output으로 설정된 artifact bucket을 사용해 `my-own-fridge` Application Stack을 배포합니다.
+- 한 번의 CloudFormation output 조회에서 `ApiUrl`, `StaticBucketName`, `DistributionId`를 추출하고 세 값의 형식을 모두 검증한 뒤에만 API URL 주입 frontend build, stack output 대상 S3 sync, CloudFront `/*` invalidation을 순서대로 실행합니다.
+- S3 sync에는 `--delete`를 사용하지 않으며, 각 단계는 선행 명령 실패 시 즉시 중단됩니다.
+- 로컬 AWS CLI와 SAM 작업에는 `default` 프로파일과 `ap-northeast-2` 리전을 사용합니다. GitHub Actions에서는 로컬 프로파일이나 장기 자격 증명 없이 OIDC 단기 자격 증명만 사용합니다.
+
+### 정적 검증 결과
+
+| 검사 | 결과 |
+| --- | --- |
+| YAML 구문 파싱 | 통과 |
+| trigger, 최소 permissions, concurrency 검사 | 통과 |
+| 저장소·ref·네 repository variable allowlist 검사 | 통과 |
+| OIDC action, 허용 계정 및 STS 계정·리전 검사 | 통과 |
+| 전체 CI 검증과 SAM deploy 단계 순서 검사 | 통과 |
+| 세 Application Stack output gate 및 frontend 배포 순서 검사 | 통과 |
+| access key secret/file, `secrets.*`, S3 `--delete` 금지 검사 | 통과 |
+| 기존 배포 자동화 테스트 | 49개 통과 |
+| `git diff --check` | 통과 |
+
+이 Task의 검증은 workflow 정적 검사와 기존 로컬 단위 테스트만 수행했습니다. 실제 OIDC 수임, SAM 배포, S3 동기화 및 CloudFront invalidation은 실행하지 않았습니다. repository variables 또는 OIDC Bootstrap이 아직 준비되지 않은 상태에서 push로 CD가 시작되면, 배포 대상과 변수 검사 또는 OIDC 수임 단계에서 AWS 변경 전에 안전하게 실패합니다.
